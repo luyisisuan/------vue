@@ -1,0 +1,349 @@
+/* src/assets/gwy-global.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* --- CSS Variables --- */
+:root {
+    /* Colors */
+    --primary-color: #4a69bd;
+    --primary-light: #7a9eeb;
+    --primary-dark: #3b54a3;
+    --secondary-color: #6a89cc;
+    --accent-color: #f39c12;
+    --success-color: #2ecc71;
+    --warning-color: #f1c40f;
+    --danger-color: #e74c3c;
+    --info-color: #3498db;
+    --study-color: #9b59b6;
+    --bg-color: #f4f7fc;
+    --sidebar-bg: #ffffff;
+    --card-bg: #ffffff;
+    --text-color: #34495e;
+    --text-light: #7f8c8d;
+    --border-color: #e1e8f0;
+    --shadow-light: rgba(50, 50, 93, 0.1) 0px 2px 5px -1px, rgba(0, 0, 0, 0.1) 0px 1px 3px -1px;
+    --shadow-medium: rgba(50, 50, 93, 0.15) 0px 6px 12px -2px, rgba(0, 0, 0, 0.2) 0px 3px 7px -3px;
+    --gradient-primary: linear-gradient(135deg, var(--primary-light), var(--primary-color));
+    --gradient-accent: linear-gradient(135deg, #f7b733, #fc4a1a);
+    --gradient-danger: linear-gradient(135deg, #ff758c, var(--danger-color));
+    --gradient-secondary: linear-gradient(135deg, #a1b6e7, var(--secondary-color));
+    --gradient-info: linear-gradient(135deg, #6bbff0, var(--info-color));
+    --gradient-study: linear-gradient(135deg, #c38ed1, var(--study-color));
+
+    /* Typography */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-size-base: 16px;
+    --line-height-base: 1.6;
+
+    /* Layout */
+    --sidebar-width: 260px;
+    --content-padding: 2rem;
+    --card-border-radius: 12px;
+    --transition-speed: 0.3s;
+    --transition-timing: ease-in-out;
+    --transition-default: all var(--transition-speed) var(--transition-timing);
+}
+
+/* --- Base Styles --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: var(--font-size-base);
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: var(--line-height-base);
+    overflow-x: hidden;
+    margin: 0;
+}
+
+a {
+    text-decoration: none;
+    color: var(--primary-color);
+    transition: color var(--transition-speed) ease;
+}
+a:hover {
+    color: var(--primary-dark);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    margin-bottom: 0.75em;
+}
+h1 { font-size: 1.8rem; }
+h2 { font-size: 1.4rem; color: var(--primary-dark); margin-bottom: 1rem; }
+h3 { font-size: 1.1rem; }
+
+/* --- App Layout --- */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* --- Main Content Area Basic Layout --- */
+.main-content {
+  margin-left: var(--sidebar-width);
+  flex-grow: 1;
+  padding: var(--content-padding);
+  padding-top: 2rem;
+  transition: margin-left var(--transition-speed) ease;
+  overflow-y: auto;
+  min-width: 300px;
+}
+
+/* --- Section Styling (Transitions managed by App.vue <transition>) --- */
+/* .content-section, .active-section might not be needed with router-view */
+
+/* 通用的 Section Header 样式 */
+.section-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.section-header h1 {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.25rem;
+}
+.section-header p {
+    color: var(--text-light);
+    font-size: 1rem;
+}
+
+/* 通用的 Icon Gradient 样式 */
+.icon-gradient,
+.icon-gradient-secondary,
+.icon-gradient-danger,
+.icon-gradient-info,
+.icon-gradient-study {
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.icon-gradient { background: var(--gradient-primary); font-size: 1.5em; }
+.icon-gradient-secondary { background: var(--gradient-secondary); font-size: 1.1em; margin-right: 0.3em; }
+.icon-gradient-danger { background: var(--gradient-danger); font-size: 1.1em; margin-right: 0.3em; }
+.icon-gradient-info { background: var(--gradient-info); font-size: 1.1em; margin-right: 0.3em; }
+.icon-gradient-study { background: var(--gradient-study); font-size: 1.1em; margin-right: 0.3em; }
+
+
+/* --- Card Component (通用样式) --- */
+.card {
+    background-color: var(--card-bg);
+    border-radius: var(--card-border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: box-shadow var(--transition-speed) ease;
+}
+.card:hover {
+    box-shadow: var(--shadow-medium);
+}
+
+/* --- Button Styling (通用样式) --- */
+.btn {
+    padding: 0.6em 1.2em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: var(--transition-default);
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    line-height: 1;
+    box-shadow: var(--shadow-light);
+    text-decoration: none;
+    color: inherit;
+}
+.btn:hover {
+    transform: translateY(-2px);
+     box-shadow: var(--shadow-medium);
+}
+.btn:active {
+     transform: translateY(0px);
+     box-shadow: var(--shadow-light);
+}
+.btn-primary { background: var(--gradient-primary); color: white; }
+.btn-primary:hover { filter: brightness(1.1); }
+.btn-success { background-color: var(--success-color); color: white; }
+.btn-success:hover { background-color: #27ae60; }
+.btn-warning { background-color: var(--warning-color); color: var(--text-color); }
+.btn-warning:hover { background-color: #f39c12; }
+.btn-danger { background-color: var(--danger-color); color: white; }
+.btn-danger:hover { background-color: #c0392b; }
+.btn-secondary { background-color: #ecf0f1; color: var(--text-light); border: 1px solid var(--border-color); }
+.btn-secondary:hover { background-color: #e1e8f0; color: var(--text-color); }
+.btn-info { background-color: var(--info-color); color: white; }
+.btn-info:hover { background-color: #2980b9; }
+
+.btn-small {
+    padding: 0.4em 0.8em;
+    font-size: 0.8rem;
+}
+.btn:disabled {
+    background-color: #bdc3c7 !important;
+    color: #7f8c8d !important;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+    filter: none;
+}
+
+/* --- General Form Styling (通用样式) --- */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem 1.5rem;
+}
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.form-group.full-width {
+    grid-column: 1 / -1;
+}
+.form-group label {
+    font-weight: 600;
+    font-size: 0.9em;
+    color: var(--primary-dark);
+}
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group input[type="file"],
+.form-group input[type="url"],
+.form-group input[type="datetime-local"],
+.form-group input[type="search"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.7em 0.9em;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-family: inherit;
+    transition: var(--transition-default);
+}
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group input[type="url"]:focus,
+.form-group input[type="datetime-local"]:focus,
+.form-group input[type="search"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(74, 105, 189, 0.2);
+}
+.form-group textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+.form-group select {
+     background-color: white;
+}
+.form-group input[type="file"] {
+    padding: 0.4em;
+    font-size: 0.9em;
+    background-color: #f8f9fa;
+}
+.form-hint {
+    font-size: 0.8em;
+    color: var(--text-light);
+    font-style: italic;
+}
+.form-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+/* --- Placeholder Text --- */
+.placeholder-text {
+    color: var(--text-light);
+    text-align: center;
+    padding: 2rem;
+    font-style: italic;
+}
+
+/* --- 通用进度条样式 (如果多处用到) --- */
+.progress-bar-container {
+     width: 100%;
+}
+.progress-bar {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+.progress-fill {
+    height: 100%;
+    background: var(--gradient-primary); /* 默认进度条颜色 */
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+.progress-bar.mini { height: 6px; }
+.progress-fill.mini { border-radius: 3px; }
+
+
+/* --- 关键进度摘要网格 (基础样式 - 移到全局) --- */
+.progress-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+
+/* --- Responsive Adjustments (全局调整) --- */
+@media (max-width: 992px) { /* Tablet and below */
+    :root {
+         --sidebar-width: 220px;
+    }
+    /* 全局 .progress-summary-grid 响应式调整 */
+    .progress-summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+}
+
+@media (max-width: 768px) { /* Mobile */
+    :root {
+        --sidebar-width: 70px;
+        --content-padding: 1rem;
+        --font-size-base: 15px;
+    }
+
+    /* 全局响应式调整 */
+    .section-header h1 { font-size: 1.5rem; }
+    .section-header p { font-size: 0.9rem; }
+    .card { padding: 1rem; }
+    .form-grid { grid-template-columns: 1fr; }
+
+    /* 全局 .progress-summary-grid 响应式调整 */
+    .progress-summary-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    }
+}
+
+/* 全局高亮样式 (如果使用 v-html) */
+mark {
+    background-color: yellow;
+    color: black;
+    padding: 0.1em;
+    border-radius: 3px;
+}
