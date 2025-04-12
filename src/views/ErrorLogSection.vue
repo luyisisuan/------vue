@@ -1,201 +1,264 @@
-<!-- src/views/ErrorLogSection.vue -->
+
 <template>
-  <div>
-    <header class="section-header">
-      <h1><i class="fas fa-exclamation-triangle icon-gradient"></i> 错题本</h1>
-      <p>记录和分析你的错题，攻克薄弱环节。</p>
-    </header>
-    <div class="card error-log-add-card">
-      <h2><i class="fas fa-plus-circle icon-gradient-secondary"></i> 添加新错题</h2>
-      <!-- 表单提交调用 store action -->
-      <form @submit.prevent="submitNewError" class="form-grid">
-        <div class="form-group full-width">
-          <label for="error-question-el">题干/问题描述:</label>
-          <!-- v-model 绑定本地 reactive 对象 -->
-          <textarea v-model="newErrorForm.question" id="error-question-el" rows="3" required placeholder="简要描述题目或粘贴题干..."></textarea>
-        </div>
-        <div class="form-group">
-          <label for="error-subject-el">所属模块:</label>
-          <select v-model="newErrorForm.subject" id="error-subject-el" required>
-            <option value="" disabled>--选择模块--</option>
-            <option v-for="subject in config.errorLogSubjects" :key="subject" :value="subject">{{ subject }}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="error-my-answer-el">我的答案:</label>
-          <input v-model.trim="newErrorForm.myAnswer" type="text" id="error-my-answer-el" placeholder="你的选择或简答">
-        </div>
-        <div class="form-group">
-          <label for="error-correct-answer-el">正确答案:</label>
-          <input v-model.trim="newErrorForm.correctAnswer" type="text" id="error-correct-answer-el" required placeholder="标准答案">
-        </div>
-        <div class="form-group">
-          <label for="error-knowledge-point-el">关联知识点:</label>
-          <input v-model.trim="newErrorForm.knowledgePoint" type="text" id="error-knowledge-point-el" placeholder="涉及的具体考点">
-        </div>
-        <div class="form-group full-width">
-          <label for="error-reason-el">错误原因分析:</label>
-          <textarea v-model="newErrorForm.reason" id="error-reason-el" rows="3" required placeholder="为什么错了？知识点不熟？审题不清？计算失误？"></textarea>
-        </div>
-        <div class="form-group">
-          <label for="error-image-el">题目截图 (可选):</label>
-          <input type="file" id="error-image-el" accept="image/*" @change="handleFileChange">
-          <span class="form-hint">仅保存文件名，请确保文件在本地</span>
-        </div>
-        <div class="form-group form-actions">
-          <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> 添加错题</button>
-        </div>
-      </form>
-    </div>
-    <div class="card error-log-list-card">
-      <h2><i class="fas fa-list-ul icon-gradient-secondary"></i> 错题列表</h2>
-      <div class="filter-controls">
-        <div class="control-group">
-          <label for="error-filter-subject-el">按模块筛选:</label>
-          <!-- v-model 绑定本地 filter ref -->
-          <select v-model="filterSubject" id="error-filter-subject-el">
-            <option value="all">所有模块</option>
-            <!-- 使用 store 的 getter -->
-            <option v-for="subject in availableSubjects" :key="subject" :value="subject">{{ subject }}</option>
-          </select>
-        </div>
-        <button @click="clearFilter" class="btn btn-secondary btn-small"><i class="fas fa-times"></i> 清除筛选</button>
+    <div>
+      <header class="section-header">
+        <h1><i class="fas fa-exclamation-triangle icon-gradient"></i> 错题本</h1>
+        <p>记录和分析你的错题，攻克薄弱环节。</p>
+      </header>
+  
+      <!-- 添加错题卡片 -->
+      <div class="card error-log-add-card">
+        <h2><i class="fas fa-plus-circle icon-gradient-secondary"></i> 添加新错题</h2>
+        <!-- 表单提交调用本地方法 submitNewError -->
+        <form @submit.prevent="submitNewError" class="form-grid">
+          <div class="form-group full-width">
+            <label for="error-question-el">题干/问题描述:</label>
+            <!-- v-model 绑定本地 reactive 对象 -->
+            <textarea v-model="newErrorForm.question" id="error-question-el" rows="3" required placeholder="简要描述题目或粘贴题干..."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="error-subject-el">所属模块:</label>
+            <!-- 下拉框绑定表单状态 -->
+            <select v-model="newErrorForm.subject" id="error-subject-el" required>
+              <option value="" disabled>--选择模块--</option>
+              <!-- 选项可以来自 config 或动态生成 -->
+              <option v-for="subject in config.errorLogSubjects" :key="subject" :value="subject">{{ subject }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="error-my-answer-el">我的答案:</label>
+            <input v-model.trim="newErrorForm.myAnswer" type="text" id="error-my-answer-el" placeholder="你的选择或简答">
+          </div>
+          <div class="form-group">
+            <label for="error-correct-answer-el">正确答案:</label>
+            <input v-model.trim="newErrorForm.correctAnswer" type="text" id="error-correct-answer-el" required placeholder="标准答案">
+          </div>
+          <div class="form-group">
+            <label for="error-knowledge-point-el">关联知识点:</label>
+            <input v-model.trim="newErrorForm.knowledgePoint" type="text" id="error-knowledge-point-el" placeholder="涉及的具体考点">
+          </div>
+          <div class="form-group full-width">
+            <label for="error-reason-el">错误原因分析:</label>
+            <textarea v-model="newErrorForm.reason" id="error-reason-el" rows="3" required placeholder="为什么错了？知识点不熟？审题不清？计算失误？"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="error-image-el">题目截图 (可选):</label>
+            <!-- 监听文件变化 -->
+            <input type="file" id="error-image-el" accept="image/*" @change="handleFileChange">
+            <span class="form-hint">仅保存文件名，请确保文件在本地</span>
+          </div>
+          <div class="form-group form-actions">
+            <button type="submit" class="btn btn-primary" :disabled="isLoading"> <!-- 可以在加载时禁用按钮 -->
+              <i class="fas fa-save"></i> {{ isLoading ? '添加中...' : '添加错题' }}
+            </button>
+          </div>
+        </form>
+        <!-- 显示添加时的错误信息 -->
+        <p v-if="error" class="error-message" style="color: red; margin-top: 0.5em;">{{ error }}</p>
       </div>
-      <div id="error-log-list-el" class="error-log-container">
-        <!-- 使用计算属性 filteredErrors -->
-        <p class="placeholder-text" v-if="filteredErrors.length === 0">
-          {{ filterSubject === 'all' ? '暂无错题记录，快去添加吧！' : `在 "${filterSubject}" 模块下暂无错题记录。` }}
-        </p>
-        <div v-else>
-          <!-- 遍历计算属性 filteredErrors -->
-          <div class="error-item" v-for="item in filteredErrors" :key="item.id" :data-id="item.id">
-            <div class="error-item-header">
-              <h3><i class="fas fa-exclamation-circle icon-gradient-danger"></i>{{ item.subject }}</h3>
-              <span class="timestamp">记录于: {{ formatTimestamp(item.timestamp) }}</span>
-            </div>
-            <div class="error-item-body">
-               <!-- ... 省略 body 内容，和之前一样绑定 item 属性 ... -->
-                <p><strong>题干:</strong> <span class="question-text">{{ item.question }}</span></p>
-                <p><strong>我的答案:</strong> {{ item.myAnswer || 'N/A' }}</p>
-                <p><strong>正确答案:</strong> {{ item.correctAnswer }}</p>
-                <p><strong>关联知识点:</strong> {{ item.knowledgePoint || 'N/A' }}</p>
-                <p><strong>错误原因:</strong> <span class="reason-text">{{ item.reason }}</span></p>
-                <p v-if="item.imageFile"><strong>截图:</strong> <span class="image-link"><i class="fas fa-image"></i>{{ item.imageFile }}</span></p>
-            </div>
-            <div class="error-item-footer">
-              <span class="review-info">复习次数: {{ item.reviewCount || 0 }} | 上次复习: {{ item.lastReviewDate ? formatTimestamp(item.lastReviewDate) : '从未' }}</span>
-              <!-- 点击调用 store action -->
-              <button @click="markReviewedHandler(item.id)" class="btn btn-secondary btn-small mark-reviewed-btn"><i class="fas fa-check"></i> 标记已复习</button>
-              <button @click="deleteErrorHandler(item.id)" class="btn btn-danger btn-small delete-error-btn"><i class="fas fa-trash"></i> 删除</button>
+  
+      <!-- 错题列表卡片 -->
+      <div class="card error-log-list-card">
+        <h2><i class="fas fa-list-ul icon-gradient-secondary"></i> 错题列表</h2>
+        <div class="filter-controls">
+          <div class="control-group">
+            <label for="error-filter-subject-el">按模块筛选:</label>
+            <!-- v-model 绑定本地筛选状态 -->
+            <select v-model="selectedFilterSubject" id="error-filter-subject-el">
+               <!-- 遍历 store getter 获取的科目 -->
+              <option v-for="subjectOption in availableSubjects" :key="subjectOption" :value="subjectOption">
+                {{ subjectOption === 'all' ? '所有模块' : subjectOption }}
+              </option>
+            </select>
+          </div>
+          <!-- 清除筛选按钮 -->
+          <button @click="clearFilter" class="btn btn-secondary btn-small"><i class="fas fa-times"></i> 清除筛选</button>
+        </div>
+  
+        <!-- 错题列表容器 -->
+        <div id="error-log-list-el" class="error-log-container">
+          <!-- 加载状态 -->
+          <div v-if="isLoading" class="loading-indicator" style="text-align: center; padding: 1rem; color: var(--text-light);">加载中...</div>
+          <!-- 错误状态 (加载列表时) -->
+          <div v-else-if="error && !isLoading" class="error-message" style="color: red; text-align: center; padding: 1rem;">错误: {{ error }}</div>
+          <!-- 无数据状态 -->
+          <div v-else-if="filteredErrors.length === 0" class="placeholder-text">
+               {{ selectedFilterSubject === 'all' ? '暂无错题记录，快去添加吧！' : `在 "${selectedFilterSubject}" 模块下暂无错题记录。` }}
+          </div>
+           <!-- 正常列表 -->
+          <div v-else>
+             <!-- v-for 遍历 store getter -->
+            <div class="error-item" v-for="item in filteredErrors" :key="item.id" :data-id="item.id">
+              <div class="error-item-header">
+                <h3><i class="fas fa-exclamation-circle icon-gradient-danger"></i>{{ item.subject }}</h3>
+                <!-- 使用导入的 formatTimestamp 函数 -->
+                <span class="timestamp">记录于: {{ formatTimestamp(item.timestamp) }}</span>
+              </div>
+              <div class="error-item-body">
+                  <p><strong>题干:</strong> <span class="question-text">{{ item.question }}</span></p>
+                  <p><strong>我的答案:</strong> {{ item.myAnswer || 'N/A' }}</p>
+                  <p><strong>正确答案:</strong> {{ item.correctAnswer }}</p>
+                  <p><strong>关联知识点:</strong> {{ item.knowledgePoint || 'N/A' }}</p>
+                  <p><strong>错误原因:</strong> <span class="reason-text">{{ item.reason }}</span></p>
+                  <p v-if="item.imageFile"><strong>截图:</strong> <span class="image-link"><i class="fas fa-image"></i>{{ item.imageFile }}</span></p>
+              </div>
+              <div class="error-item-footer">
+                <span class="review-info">复习次数: {{ item.reviewCount || 0 }} | 上次复习: {{ item.lastReviewDate ? formatTimestamp(item.lastReviewDate) : '从未' }}</span>
+                <!-- 点击调用本地处理方法 -->
+                <button @click="markReviewedHandler(item.id)" class="btn btn-secondary btn-small mark-reviewed-btn"><i class="fas fa-check"></i> 标记已复习</button>
+                <button @click="deleteErrorHandler(item.id)" class="btn btn-danger btn-small delete-error-btn"><i class="fas fa-trash"></i> 删除</button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</template>
-
+  </template>
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
-import { storeToRefs } from 'pinia'; // 导入 storeToRefs
-import { useErrorLogStore } from '@/stores/errorLogStore.js'; // 1. 导入 Store
-import config from '@/config.js';
-import { formatTimestamp } from '@/utils/formatters.js'; // 导入需要的工具函数
+import { ref, reactive, computed, watch } from 'vue'; // 导入 watch
+import { storeToRefs } from 'pinia';
+import { useErrorLogStore } from '@/stores/errorLogStore.js';
+import config from '@/config.js'; // 导入 config 以获取科目列表
+// 假设你有一个 formatTimestamp 工具函数
+import { formatTimestamp } from '@/utils/formatters.js'; // 需要创建这个文件或调整路径
 
-const errorLogStore = useErrorLogStore(); // 2. 获取 Store 实例
-
-// 3. 使用 storeToRefs 获取响应式的 state 和 getters
-// errors state 会自动从 store 更新
+// --- Store ---
+const errorLogStore = useErrorLogStore();
+// 使用 storeToRefs 获取响应式状态和 getters
+// filteredErrors 现在由 Store 直接提供（包含了筛选逻辑）
 // availableSubjects getter 也会自动更新
-const { errors, availableSubjects, errorCount } = storeToRefs(errorLogStore);
+const {
+  filteredErrors, // 直接使用 Store 中已过滤/排序的列表
+  isLoading,      // 加载状态
+  error,          // 错误状态
+  availableSubjects, // 可用科目列表 (getter)
+  errorCount,     // 错题总数 (getter)
+} = storeToRefs(errorLogStore);
 
-// 本地状态，用于筛选和添加表单
-const filterSubject = ref('all');
-const newErrorForm = reactive({ // 使用 reactive 处理表单对象
+// --- 本地状态 ---
+// 用于筛选下拉框的 v-model
+const selectedFilterSubject = ref('all');
+
+// 用于添加表单的 v-model
+const newErrorForm = reactive({
   question: '',
-  subject: '',
+  subject: '', // 默认应该是 '', 让用户选择
   myAnswer: '',
   correctAnswer: '',
   knowledgePoint: '',
   reason: '',
-  imageFile: null, // 文件名
+  imageFile: null, // 只存储文件名
 });
-let selectedFileObject = null; // 存储 File 对象，如果需要上传的话
-
-// 计算属性，根据本地筛选条件过滤 store 中的 errors
-const filteredErrors = computed(() => {
-  if (filterSubject.value === 'all') {
-    return errors.value; // 直接使用 store 的响应式 state
-  }
-  return errors.value.filter(item => item.subject === filterSubject.value);
-});
+let selectedFileObject = null; // 存储实际的 File 对象 (如果需要上传)
 
 // --- 方法 ---
+// 处理文件选择
 function handleFileChange(event) {
   const file = event.target.files?.[0];
   if (file) {
-    newErrorForm.imageFile = file.name; // 保存文件名到表单对象
-    selectedFileObject = file; // 保存文件对象（如果需要上传）
+    newErrorForm.imageFile = file.name; // 更新表单中的文件名
+    selectedFileObject = file;
+    console.log('Selected file:', file.name);
   } else {
     newErrorForm.imageFile = null;
     selectedFileObject = null;
   }
 }
 
-// 提交新错题，调用 store action
-function submitNewError() {
+// 提交新错题表单
+async function submitNewError() { // 改为 async 以便处理 action 可能的异步反馈
   // 基础验证
-   if (!newErrorForm.question || !newErrorForm.correctAnswer || !newErrorForm.reason || !newErrorForm.subject) {
-     alert('请选择模块并填写题干、正确答案和错误原因分析！');
+  if (!newErrorForm.subject) {
+     alert('请选择所属模块！');
+     return;
+  }
+   if (!newErrorForm.question || !newErrorForm.correctAnswer || !newErrorForm.reason) {
+     alert('请填写题干、正确答案和错误原因分析！');
      return;
    }
-  // 调用 store action 添加数据
-  errorLogStore.addError({
+
+  // 准备要传递给 store action 的数据 (不包含文件对象)
+  const errorData = {
     question: newErrorForm.question.trim(),
     subject: newErrorForm.subject,
-    myAnswer: newErrorForm.myAnswer?.trim() || 'N/A',
+    myAnswer: newErrorForm.myAnswer?.trim() || 'N/A', // 处理空字符串
     correctAnswer: newErrorForm.correctAnswer.trim(),
-    knowledgePoint: newErrorForm.knowledgePoint?.trim() || 'N/A',
+    knowledgePoint: newErrorForm.knowledgePoint?.trim() || 'N/A', // 处理空字符串
     reason: newErrorForm.reason.trim(),
-    imageFile: newErrorForm.imageFile, // 传递文件名
-  });
+    imageFile: newErrorForm.imageFile, // 只传递文件名
+  };
 
-  // 清空表单
-  newErrorForm.question = '';
-  newErrorForm.subject = '';
-  newErrorForm.myAnswer = '';
-  newErrorForm.correctAnswer = '';
-  newErrorForm.knowledgePoint = '';
-  newErrorForm.reason = '';
-  newErrorForm.imageFile = null;
-  selectedFileObject = null;
-  const fileInput = document.getElementById('error-image-el');
-  if (fileInput) fileInput.value = '';
+  // 调用 store action 添加数据
+  await errorLogStore.addError(errorData); // 等待 action 完成（如果需要后续操作）
 
-  alert('错题添加成功！');
-}
+  // 检查 store 中是否有错误信息
+  if (errorLogStore.error) {
+      alert(`添加失败: ${errorLogStore.error}`); // 显示错误信息
+  } else {
+      // 清空表单 (只在添加成功后清空)
+      newErrorForm.question = '';
+      newErrorForm.subject = '';
+      newErrorForm.myAnswer = '';
+      newErrorForm.correctAnswer = '';
+      newErrorForm.knowledgePoint = '';
+      newErrorForm.reason = '';
+      newErrorForm.imageFile = null;
+      selectedFileObject = null;
+      const fileInput = document.getElementById('error-image-el'); // 使用你模板中的 ID
+      if (fileInput) fileInput.value = ''; // 重置文件输入框
 
-function clearFilter() {
-  filterSubject.value = 'all';
-}
-
-// 调用 store action 标记复习
-function markReviewedHandler(errorId) {
-  errorLogStore.markReviewed(errorId);
-  // 可以选择性地给用户一个反馈，比如按钮状态变化或提示
-}
-
-// 调用 store action 删除
-function deleteErrorHandler(errorId) {
-  if (confirm('确定要删除这条错题记录吗？此操作无法撤销。')) {
-    errorLogStore.deleteError(errorId);
+      alert('错题添加成功！');
+       // 可以在这里考虑是否需要自动切换筛选或重新加载
+       // 例如，如果添加后想看到所有最新的，可以:
+       // selectedFilterSubject.value = 'all';
   }
 }
 
-// onMounted 不再需要手动加载数据，Store 创建时已加载
+// 清除筛选条件
+function clearFilter() {
+  selectedFilterSubject.value = 'all';
+  // Store 的 loadErrors action 会被下面的 watch 触发
+}
+
+// 处理标记复习按钮点击
+async function markReviewedHandler(errorId) { // 改为 async
+  await errorLogStore.markAsReviewed(errorId);
+  if (errorLogStore.error) {
+      alert(`标记复习失败: ${errorLogStore.error}`);
+  }
+  // 可选：添加成功提示或 UI 反馈
+}
+
+// 处理删除按钮点击
+async function deleteErrorHandler(errorId) { // 改为 async
+  if (confirm('确定要删除这条错题记录吗？此操作无法撤销。')) {
+    await errorLogStore.deleteError(errorId);
+    if (errorLogStore.error) {
+        alert(`删除失败: ${errorLogStore.error}`);
+    }
+     // 可选：添加成功提示
+  }
+}
+
+// --- 侦听器 ---
+// 侦听筛选条件的变化，当变化时调用 store action 重新加载数据
+watch(selectedFilterSubject, (newFilter) => {
+  // 调用 store action，传递新的筛选值 (null 代表 'all')
+  errorLogStore.loadErrors(newFilter === 'all' ? null : newFilter);
+});
+
+// --- 生命周期钩子 ---
+// onMounted 不再需要手动加载初始数据，Store 创建时已自动加载
 // onMounted(() => {
-//   // errorLogStore.loadErrors(); // 如果需要在组件挂载时强制刷新
+//   console.log('ErrorLogSection mounted');
 // });
+
+// 导出 config 供模板中的下拉列表使用 (如果科目列表是固定的)
+// 如果科目列表是从 availableSubjects 动态生成的，就不需要导出 config
+// export { config }; // 如果模板中使用了 config.errorLogSubjects
+
+// 导出 formatTimestamp 供模板使用
+//export { formatTimestamp };
 
 </script>
   

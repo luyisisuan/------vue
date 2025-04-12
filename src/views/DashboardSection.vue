@@ -81,7 +81,7 @@ import config from '@/config.js';
 // 导入需要的 Stores
 import { usePomodoroStore } from '@/stores/pomodoroStore.js';
 import { useErrorLogStore } from '@/stores/errorLogStore.js';
-import { useKnowledgeBaseStore } from '@/stores/knowledgeBaseStore.js';
+import { useKnowledgeStore } from '@/stores/knowledgeStore.js';
 import { useStudyLogStore } from '@/stores/studyLogStore.js';
 // 导入需要的工具函数
 import { loadData } from '@/utils/storage.js';
@@ -91,7 +91,7 @@ import { loadData } from '@/utils/storage.js';
 // 获取 Store 实例
 const pomodoroStore = usePomodoroStore();
 const errorLogStore = useErrorLogStore();
-const knowledgeBaseStore = useKnowledgeBaseStore();
+const knowledgeBaseStore = useKnowledgeStore();
 const studyLogStore = useStudyLogStore();
 
 // --- 响应式状态 (倒计时 & 暂时未放入 Store 的摘要) ---

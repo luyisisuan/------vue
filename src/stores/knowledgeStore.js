@@ -2,9 +2,8 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import axios from 'axios';
-// 移除旧导入
-// import config from '@/config.js';
-// import { loadData, saveData, generateId } from '@/utils/storage.js';
+// 假设 config.js 在 @/ 目录下，并且包含 knowledgeBaseCategories
+import config from '@/config.js';
 
 const API_BASE_URL = 'http://localhost:8080/api/knowledge'; // 后端 API 基础 URL
 
@@ -18,25 +17,16 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
   const currentSearchTerm = ref('');
 
   // --- Getters ---
-  // Getter for filtered items (could be simplified if loadItems always fetches filtered)
-  const filteredItems = computed(() => {
-      // This getter might become simpler if loadItems always fetches the correct list
-      // based on currentFilterCategory and currentSearchTerm stored here.
-      // For now, it just returns the current items list.
-      return items.value;
-  });
+  // Getter for filtered items (目前直接返回 items，因为 loadItems 会获取过滤/搜索后的数据)
+  const filteredItems = computed(() => items.value);
 
-  // Getter for available categories based on current items
+  // Getter for available categories based on current items and config
   const availableCategories = computed(() => {
-      // 从 items 提取不重复的 category
-      const categories = new Set(items.value.map(item => item.category));
-      // 假设 config.knowledgeBaseCategories 包含预定义的分类
-      // import config from '@/config.js'; // 需要导入 config
-      // const allPossibleCategories = [...new Set([...config.knowledgeBaseCategories, ...categories])];
-      // return ['all', ...allPossibleCategories.sort()];
-
-      // 如果只基于现有数据生成：
-      return ['all', ...Array.from(categories).sort()];
+      const categoriesFromItems = new Set(items.value.map(item => item.category));
+      // 合并 config 中的预定义分类和实际数据中的分类
+      const allPossibleCategories = [...new Set([...(config?.knowledgeBaseCategories || []), ...categoriesFromItems])];
+      // 返回包含 'all' 并且排序后的列表
+      return ['all', ...allPossibleCategories.sort()];
   });
 
   const itemCount = computed(() => items.value.length);
@@ -45,24 +35,24 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
 
   // 从后端加载知识条目，支持筛选
   async function loadItems(category = null, searchTerm = '') {
-    // 更新 store 内的筛选状态（如果需要）
+    // 更新 store 内的筛选状态
     currentFilterCategory.value = category;
     currentSearchTerm.value = searchTerm;
 
     isLoading.value = true;
     error.value = null;
-    const params = {}; // 用于构建查询参数
+    const params = {};
     if (category && category !== 'all') {
         params.category = category;
     }
-    if (searchTerm && searchTerm.trim()) {
+    // 确保 searchTerm 是字符串且非空
+    if (typeof searchTerm === 'string' && searchTerm.trim()) {
         params.search = searchTerm.trim();
     }
 
     try {
-      // 发送 GET 请求，附带查询参数
       const response = await axios.get(API_BASE_URL, { params });
-      items.value = response.data; // 更新列表
+      items.value = response.data;
       console.log(`Loaded ${items.value.length} knowledge items from API.`);
     } catch (err) {
       console.error('Error loading knowledge items from API:', err);
@@ -75,34 +65,32 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
 
   // 添加新知识条目
   async function addItem(itemData) {
-    // 基本验证
     if (!itemData || !itemData.title || !itemData.category || !itemData.content) {
         error.value = '请填写标题、分类和内容！';
         console.warn('Incomplete knowledge item data for adding.');
-        return false; // 返回 false 表示添加失败
+        return false;
     }
     isLoading.value = true;
     error.value = null;
     try {
-       // 准备发送的数据 (确保 tags 是数组)
        const dataToSend = {
            ...itemData,
-           tags: itemData.tags || [], // 确保 tags 是数组
+           tags: itemData.tags || [],
        };
-       delete dataToSend.id; // 后端生成 ID
-       delete dataToSend.timestamp; // 后端生成时间戳
+       delete dataToSend.id;
+       delete dataToSend.timestamp;
 
       const response = await axios.post(API_BASE_URL, dataToSend);
-      // 添加成功后，将新条目加到列表开头 (或重新加载列表)
-      items.value.unshift(response.data);
+      items.value.unshift(response.data); // 加到开头，保持最新在上面
       console.log('Knowledge item added via API:', response.data);
-       // 清除之前的错误信息
        error.value = null;
-       return true; // 返回 true 表示添加成功
+       return true;
     } catch (err) {
       console.error('Error adding knowledge item via API:', err);
-      error.value = '添加知识条目失败，请稍后重试。';
-      return false; // 返回 false 表示添加失败
+      // 尝试解析后端可能返回的错误信息
+       const backendError = err.response?.data?.message || err.message || '未知错误';
+       error.value = `添加知识条目失败: ${backendError}`;
+      return false;
     } finally {
       isLoading.value = false;
     }
@@ -110,15 +98,23 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
 
   // 删除知识条目
   async function deleteItem(id) {
+    // 可以在删除前记录当前筛选条件，以便删除后恢复
+    const previousCategory = currentFilterCategory.value;
+    const previousSearch = currentSearchTerm.value;
+
     isLoading.value = true;
     error.value = null;
     try {
       await axios.delete(`${API_BASE_URL}/${id}`);
-      items.value = items.value.filter(item => item.id !== id);
+      // 从本地列表中移除 (或者在成功后调用 loadItems 重新加载)
+      // items.value = items.value.filter(item => item.id !== id);
       console.log(`Knowledge item with id ${id} removed via API.`);
+      // 删除成功后，重新加载当前筛选条件下的列表，确保分页等（如果未来有）正确
+      await loadItems(previousCategory, previousSearch);
     } catch (err) {
       console.error('Error removing knowledge item via API:', err);
-      error.value = '删除知识条目失败，请稍后重试。';
+       const backendError = err.response?.data?.message || err.message || '未知错误';
+      error.value = `删除知识条目失败: ${backendError}`;
     } finally {
       isLoading.value = false;
     }
@@ -133,12 +129,12 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
     items,
     isLoading,
     error,
-    currentFilterCategory, // 如果组件需要直接修改筛选条件
-    currentSearchTerm,    // 同上
-    filteredItems,      // 暴露过滤后的列表 (目前直接等于 items)
-    availableCategories, // 暴露可用分类
+    currentFilterCategory,
+    currentSearchTerm,
+    filteredItems, // 注意：目前 filteredItems === items，因为筛选逻辑在 loadItems 中
+    availableCategories,
     itemCount,
-    loadItems,        // 暴露以便组件可以触发加载/筛选
+    loadItems,
     addItem,
     deleteItem,
   };
