@@ -1,221 +1,274 @@
 <!-- src/views/StudyLogSection.vue -->
 <template>
   <div>
-    <header class="section-header"> <!-- 全局样式 -->
+    <header class="section-header">
       <h1><i class="fas fa-chart-pie icon-gradient"></i> 学习统计</h1>
       <p>回顾你的学习投入和效率。</p>
     </header>
-    <div class="card study-log-stats-card"> <!-- 全局 .card, 添加特定类 -->
+
+     <!-- 显示加载或错误状态 -->
+     <div v-if="isLoading" class="loading-indicator card">加载中...</div>
+     <div v-else-if="error" class="error-message card" style="color: red;">错误: {{ error }}</div>
+
+    <!-- 统计数据卡片 -->
+    <div v-else class="card study-stats-card"> <!-- Added specific class -->
       <h2><i class="fas fa-calendar-alt icon-gradient-secondary"></i> 学习时长概览</h2>
       <div class="study-stats-grid">
         <div class="stat-item">
           <span class="stat-label">今日总时长</span>
-          <!-- 绑定 store getter -->
-          <span class="stat-value">{{ formattedDurationStats.today }}</span>
+           <!-- 使用 getter 和 formatDuration -->
+          <span class="stat-value" id="stat-today-duration">{{ formatDuration(todayDurationSeconds) }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">本周总时长</span>
-          <!-- 绑定 store getter -->
-          <span class="stat-value">{{ formattedDurationStats.week }}</span>
+          <span class="stat-value" id="stat-week-duration">{{ formatDuration(weekDurationSeconds) }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">本月总时长</span>
-          <!-- 绑定 store getter -->
-          <span class="stat-value">{{ formattedDurationStats.month }}</span>
+          <span class="stat-value" id="stat-month-duration">{{ formatDuration(monthDurationSeconds) }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">总计学习时长</span>
-          <!-- 绑定 store getter -->
-          <span class="stat-value">{{ formattedDurationStats.total }}</span>
+          <span class="stat-value" id="stat-total-duration">{{ formatDuration(totalDurationSeconds) }}</span>
         </div>
       </div>
-      <!-- Optional Chart Placeholder -->
+      <!-- Placeholder for future chart -->
       <!-- <div id="study-chart-container" style="height: 300px; margin-top: 2rem; background: #f0f0f0; display:flex; align-items:center; justify-content:center; color: #aaa;">图表区域 (待开发)</div> -->
     </div>
-    <div class="card study-log-list-card"> <!-- 全局 .card, 添加特定类 -->
+
+    <!-- 最近学习记录卡片 -->
+     <div v-if="!isLoading && !error" class="card study-log-list-card"> <!-- Added specific class -->
       <h2><i class="fas fa-history icon-gradient-secondary"></i> 最近学习记录</h2>
-      <div id="study-log-list-sl" class="study-log-container">
-        <!-- v-if/v-else 基于 store getter -->
-        <p class="placeholder-text" v-if="recentLogs.length === 0">暂无学习记录。完成番茄钟工作周期会自动记录。</p>
+      <div id="study-log-list" class="study-log-container">
+         <!-- 无数据提示 -->
+        <p v-if="logs.length === 0" class="placeholder-text">暂无学习记录。完成番茄钟工作周期会自动记录。</p>
+         <!-- 列表渲染 -->
         <div v-else>
-          <!-- v-for 遍历 store getter -->
-          <div class="study-log-item" v-for="item in recentLogs" :key="item.id">
-            <span class="activity">{{ item.activity }}</span>
-            <!-- 调用本地格式化函数 -->
+           <!-- v-for 遍历 store state -->
+          <div class="study-log-item" v-for="item in logs" :key="item.id">
+            <span class="activity">{{ item.activity || '专注学习' }}</span>
+             <!-- 使用 formatDuration -->
             <span class="duration">{{ formatDuration(item.durationSeconds) }}</span>
+             <!-- 使用 formatTimestamp -->
             <span class="timestamp">{{ formatTimestamp(item.startTime) }}</span>
           </div>
         </div>
       </div>
+      <!-- 清空按钮 -->
       <div class="study-log-actions">
-        <!-- @click 调用本地 handler，handler 再调用 store action -->
-        <button @click="clearLogsHandler" class="btn btn-danger btn-small" aria-label="清空所有学习记录">
-            <i class="fas fa-trash-alt"></i> 清空所有学习记录
+        <button @click="clearLogsHandler" class="btn btn-danger btn-small" :disabled="isLoading || logs.length === 0">
+          <i class="fas fa-trash-alt"></i> 清空所有学习记录
         </button>
+         <!-- 显示清空时的错误 -->
+         <span v-if="clearError" class="error-message small" style="margin-left: 1em;">{{ clearError }}</span>
       </div>
     </div>
-     <!-- Optional Manual Add Form -->
-     <!--
-     <div class="card">
-         <h2><i class="fas fa-plus-circle icon-gradient-secondary"></i> 手动添加学习记录</h2>
-         <form id="add-manual-study-log-form" class="form-grid"> ... </form>
-     </div>
-     -->
+
+    <!-- Optional: Manual Add Form (Remove or keep as is, requires separate logic) -->
+    <!-- ... -->
   </div>
 </template>
 
 <script setup>
-import { storeToRefs } from 'pinia'; // 导入 storeToRefs
-import { useStudyLogStore } from '@/stores/studyLogStore.js'; // 1. 导入 Store
-// 导入格式化函数，因为 v-for 中需要用到
-import { formatDuration, formatTimestamp } from '@/utils/formatters.js';
-// onMounted 可能不再需要，因为 store 初始化时会加载数据
-// import { onMounted } from 'vue';
+import { ref, computed } from 'vue'; // Removed onMounted
+import { storeToRefs } from 'pinia';
+import { useStudyLogStore } from '@/stores/studyLogStore.js';
+// 导入格式化函数
+import { formatDuration, formatTimestamp } from '@/utils/formatters.js'; // 需要创建 formatters.js
 
-const studyLogStore = useStudyLogStore(); // 2. 获取实例
+// --- Store ---
+const studyLogStore = useStudyLogStore();
+// 获取响应式 state 和 getters
+const {
+  logs,
+  isLoading,
+  error, // Loading/error for fetching logs
+  totalDurationSeconds,
+  todayDurationSeconds,
+  weekDurationSeconds,
+  monthDurationSeconds
+} = storeToRefs(studyLogStore);
 
-// 3. 使用 storeToRefs 获取响应式的 getters
-// formattedDurationStats 是包含 today, week, month, total (格式化后) 的对象
-// recentLogs 是包含最近日志对象的数组
-// 它们会自动随着 store 状态变化而更新
-const { formattedDurationStats, recentLogs } = storeToRefs(studyLogStore);
+// --- 本地状态 ---
+const clearError = ref(null); // 用于显示清空操作的错误
 
 // --- 方法 ---
-// 处理清空按钮点击事件，调用 store action
-function clearLogsHandler() {
-  studyLogStore.clearLogs(); // store action 内部会处理 confirm 对话框
+async function clearLogsHandler() {
+  clearError.value = null; // 清除旧错误
+  if (confirm('确定要清空所有学习记录吗？此操作无法撤销。')) {
+    const success = await studyLogStore.clearAllLogs();
+    if (!success) {
+      // 如果 store action 返回 false 或设置了 error ref
+      clearError.value = studyLogStore.error || '清空日志失败，请稍后重试。';
+    } else {
+        alert('学习记录已清空！');
+    }
+  }
 }
 
-// 不再需要在 onMounted 中手动加载数据或计算统计
-// onMounted(() => {
-//   // studyLogStore.loadLogs(); // 如果需要在每次组件挂载时强制刷新
-// });
+// --- 导出 ---
+// 导出格式化函数供模板使用
+//export { formatDuration, formatTimestamp };
 
 </script>
 
 <style scoped>
-/* --- Study Log Specific Styles (补充完整) --- */
-.study-log-stats-card,
-.study-log-list-card {
-     border-left: 4px solid var(--study-color); /* 特定边框颜色 */
+/* --- Study Log Specific Styles --- */
+.study-stats-card { /* Card for stats */
+     border-left: 4px solid var(--study-color);
+}
+.study-log-list-card { /* Card for log list */
+     border-left: 4px solid var(--secondary-color); /* Different color */
 }
 
-/* 统计网格布局 */
+
 .study-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* 自适应列 */
-    gap: 1.5rem; /* 间距 */
-    text-align: center; /* 文本居中 */
-    margin-top: 1rem; /* 与标题间距 */
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1.5rem;
+    text-align: center;
+    margin-top: 1rem; /* Space above stats */
 }
-/* 单个统计项 */
 .stat-item {
-    background-color: #f8faff; /* 背景色 */
-    padding: 1rem; /* 内边距 */
-    border-radius: 8px; /* 圆角 */
-    border: 1px solid var(--border-color); /* 边框 */
+    background-color: #f8faff; /* Light background for each stat */
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 .stat-label {
-    display: block; /* 独占一行 */
-    font-size: 0.9em; /* 字体大小 */
-    color: var(--text-light); /* 颜色 */
-    margin-bottom: 0.5rem; /* 与数值间距 */
-    font-weight: 500; /* 字重 */
+    display: block;
+    font-size: 0.9em;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
 }
 .stat-value {
-    display: block; /* 独占一行 */
-    font-size: 1.6rem; /* 字体大小 */
-    font-weight: 700; /* 字重 */
-    color: var(--study-color); /* 主题色 */
-    min-height: 1.3em; /* 防止跳动 */
+    display: block;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--study-color); /* Use study color for value */
 }
 
-/* 日志列表容器 */
+/* Log list container */
 .study-log-container {
-    margin-top: 1.5rem; /* 与标题间距 */
-    max-height: 400px; /* 最大高度 */
-    overflow-y: auto; /* 超出则滚动 */
-    border: 1px solid var(--border-color); /* 边框 */
-    border-radius: 8px; /* 圆角 */
-    padding: 0.5rem; /* 内边距 */
-    background-color: #fff; /* 背景色 */
+    margin-top: 1.5rem;
+    max-height: 400px; /* Limit height and make scrollable */
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.5rem; /* Padding inside the scrollable area */
+    background-color: #fff; /* White background */
 }
 
-/* 单条日志记录项 */
 .study-log-item {
-    display: flex; /* 使用 flex 布局 */
-    justify-content: space-between; /* 两端对齐 */
-    align-items: center; /* 垂直居中 */
-    padding: 0.8rem 1rem; /* 内边距 */
-    border-bottom: 1px solid #f0f4f8; /* 分隔线 */
-    font-size: 0.95rem; /* 字体大小 */
-    gap: 1rem; /* 元素间距 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem 1rem; /* Padding for each item */
+    border-bottom: 1px solid #f0f4f8; /* Lighter separator */
+    font-size: 0.95rem;
+    gap: 1rem;
 }
 .study-log-item:last-child {
-    border-bottom: none; /* 最后一项无分隔线 */
+    border-bottom: none;
 }
 .study-log-item:nth-child(even) {
-     background-color: #fdfdff; /* 斑马条纹 */
+     background-color: #fdfdff; /* Subtle striping */
 }
-/* 活动名称 */
 .study-log-item .activity {
-    flex-grow: 1; /* 占据主要空间 */
-    font-weight: 500; /* 字重 */
-    color: var(--text-color); /* 颜色 */
-    word-break: break-word; /* 换行 */
+    flex-grow: 1;
+    font-weight: 500;
+    color: var(--text-color);
+    word-break: break-word; /* Wrap long activity names */
 }
-/* 持续时长 */
 .study-log-item .duration {
-    font-weight: 600; /* 字重 */
-    color: var(--study-color); /* 主题色 */
-    white-space: nowrap; /* 不换行 */
-    min-width: 70px; /* 最小宽度对齐 */
-    text-align: right; /* 右对齐 */
-    flex-shrink: 0; /* 防止被压缩 */
+    font-weight: 600;
+    color: var(--study-color);
+    white-space: nowrap; /* Keep duration on one line */
+    min-width: 70px;
+    text-align: right;
 }
-/* 时间戳 */
 .study-log-item .timestamp {
-    font-size: 0.85em; /* 字体大小 */
-    color: var(--text-light); /* 颜色 */
-    white-space: nowrap; /* 不换行 */
-    min-width: 130px; /* 最小宽度对齐 */
-    text-align: right; /* 右对齐 */
-    flex-shrink: 0; /* 防止被压缩 */
+    font-size: 0.85em;
+    color: var(--text-light);
+    white-space: nowrap;
+    min-width: 130px; /* Ensure space for timestamp */
+    text-align: right;
 }
 
-/* 清空按钮容器 */
+/* Actions below the list */
 .study-log-actions {
-     margin-top: 1rem; /* 与列表间距 */
-     text-align: right; /* 按钮靠右 */
+     margin-top: 1rem;
+     text-align: right; /* Align button right */
+     display: flex; /* Use flex for aligning error message */
+     justify-content: flex-end;
+     align-items: center;
+     gap: 1em;
 }
-/* .btn, .btn-danger, .btn-small 样式是全局的 */
+/* Error message style */
+.error-message.small {
+     font-size: 0.8em;
+     color: var(--danger-color);
+     /* margin-left: 1em; */ /* Handled by gap */
+}
 
-/* --- Study Log Specific Responsive --- */
+/* Placeholder text */
+.placeholder-text {
+    color: var(--text-light);
+    text-align: center;
+    padding: 2rem;
+    font-style: italic;
+}
+
+/* Loading indicator */
+.loading-indicator {
+    text-align: center;
+    padding: 1rem;
+    color: var(--text-light);
+}
+
+/* Responsive Adjustments */
 @media (max-width: 768px) {
     .study-stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); /* 调整最小宽度 */
-        gap: 1rem; /* 减小间距 */
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 1rem;
     }
-    .stat-value { font-size: 1.4rem; } /* 调整字体大小 */
+    .stat-value { font-size: 1.4rem; }
 
-    /* 日志项在手机上堆叠 */
     .study-log-item {
-        flex-direction: column; /* 垂直排列 */
-        align-items: flex-start; /* 左对齐 */
-        gap: 0.3rem; /* 减小间距 */
-        padding: 0.8rem; /* 调整内边距 */
+        /* Stack items vertically on mobile */
+        flex-direction: column;
+        align-items: flex-start; /* Align left */
+        gap: 0.3rem;
+        padding: 0.8rem;
     }
     .study-log-item .timestamp {
-        order: 3; /* 时间最后 */
+        order: 3; /* Put time last */
         font-size: 0.8em;
-        min-width: unset; /* 取消最小宽度 */
-        text-align: left; /* 左对齐 */
+        min-width: unset; /* Remove min-width */
+        text-align: left; /* Align left */
     }
     .study-log-item .duration {
-        order: 2; /* 时长中间 */
-        min-width: unset; /* 取消最小宽度 */
-        text-align: left; /* 左对齐 */
+        order: 2;
+        min-width: unset;
+        text-align: left;
     }
-    .study-log-item .activity { order: 1; } /* 活动最前 */
+    .study-log-item .activity { order: 1; }
+
+    .study-log-actions {
+        flex-direction: column; /* Stack button and message */
+        align-items: flex-end; /* Align right */
+        gap: 0.5rem;
+    }
+    .error-message.small { margin-left: 0; }
+}
+
+/* Header icon style (if needed) */
+.section-header i.icon-gradient {
+    background: var(--gradient-study); /* Use study gradient */
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-size: 1.5em;
 }
 </style>
