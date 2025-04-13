@@ -1,3 +1,4 @@
+<!-- src/views/StudyLogSection.vue -->
 <template>
   <div class="study-log-page-container">
     <header class="section-header">
@@ -9,7 +10,6 @@
     <div v-else-if="error" class="error-message card" style="color: red;">错误: {{ error }}</div>
 
     <div v-else class="study-log-content-grid">
-      <!-- 统计数据区域 -->
       <div class="card study-stats-card">
         <h2><i class="fas fa-calendar-alt icon-gradient-secondary"></i> 学习时长概览</h2>
         <div class="study-stats-grid">
@@ -32,7 +32,6 @@
         </div>
       </div>
 
-      <!-- 最近日志列表 -->
       <div class="card study-log-list-card">
         <h2><i class="fas fa-history icon-gradient-secondary"></i> 最近学习记录</h2>
         <div id="study-log-list" class="study-log-container">
@@ -41,10 +40,10 @@
             <li v-for="item in logs" :key="item.id" class="study-log-item">
               <span class="activity">{{ item.activity || '专注学习' }}</span>
               <div class="details">
-                <span class="duration">{{ formatDuration((parseISO(item.endTime) - parseISO(item.startTime)) / 1000) }}</span>
-                <span class="timestamp">
-                  ({{ formatTimestamp(item.startTime, 'HH:mm') }} - {{ formatTimestamp(item.endTime, 'HH:mm') }})
-                  <span class="date-tooltip">{{ formatTimestamp(item.startTime, 'yyyy-MM-dd') }}</span>
+                <!-- **MODIFIED:** 直接使用 item.durationSeconds -->
+                <span class="duration">{{ formatDuration(item.durationSeconds) }}</span>
+                <span class="timestamp" :title="formatTimestamp(item.startTime, 'yyyy-MM-dd HH:mm')">
+                   ({{ formatTimestamp(item.startTime, 'HH:mm') }} - {{ formatTimestamp(item.endTime, 'HH:mm') }})
                 </span>
               </div>
             </li>
@@ -66,27 +65,25 @@ import { ref } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useStudyLogStore } from '@/stores/studyLogStore.js';
 import { formatDuration, formatTimestamp } from '@/utils/formatters.js';
-import { parseISO } from 'date-fns';
+// 移除了 parseISO，因为不再需要在模板里计算时长
 
+// Store
 const studyLogStore = useStudyLogStore();
 const {
-  logs,
-  isLoading,
-  error,
-  totalDurationSeconds,
-  todayDurationSeconds,
-  weekDurationSeconds,
-  monthDurationSeconds
+  logs, isLoading, error,
+  totalDurationSeconds, todayDurationSeconds, weekDurationSeconds, monthDurationSeconds
 } = storeToRefs(studyLogStore);
 
+// Local State
 const clearError = ref(null);
 
+// Methods
 async function clearLogsHandler() {
   clearError.value = null;
   if (confirm('确定要清空所有学习记录吗？此操作无法撤销。')) {
     const success = await studyLogStore.clearAllLogs();
     if (!success) {
-      clearError.value = studyLogStore.error || '清空日志失败，请稍后重试。';
+      clearError.value = studyLogStore.error || '清空日志失败。';
     } else {
       alert('学习记录已清空！');
     }
