@@ -1,162 +1,80 @@
-# 备考智能驾驶舱 (Vue 版本) 🚀
+# 备考智能驾驶舱 (前端 - Vue 3 SPA)
 
-这是一个为 **段绪程** 同学定制的个人公务员考试备考管理仪表盘应用。该项目是基于 Vue 3、Vite、Vue Router 和 Pinia 构建的现代单页应用程序 (SPA)，旨在提供一个集中化、结构化、可持久化的备考辅助工具。
+本项目是“备考智能驾驶舱”的前端部分，一个使用 Vue 3 构建的单页应用程序 (SPA)，旨在为用户提供一个集中管理公务员考试备考信息的交互式界面。
 
-此版本是从原生的 HTML、CSS 和 JavaScript 版本迁移而来，利用了 Vue 的组件化、响应式和工具链优势，以提高开发效率和代码可维护性。
+## 项目目的
 
-✨ **在线访问 (如果部署的话):** [在此处放置你的部署链接]
+为备考公务员的用户（特别是项目开发者本人）提供一个集计划制定、进度跟踪、学习辅助、信息记录于一体的个人仪表盘，提升备考效率和条理性。
 
-## 主要功能 ✨
+## 技术栈
 
-*   **📊 仪表盘 (Dashboard):**
-    *   显示考生基本信息和目标。
-    *   考试报名/笔试日期倒计时。
-    *   关键进度摘要（任务完成度、课程进度、今日专注次数、错题数、知识库条目、今日学习时长）。
-*   **📅 备考轴 (Timeline):**
-    *   按阶段划分备考任务。
-    *   可视化各阶段任务完成进度条。
-    *   记录各阶段学习笔记。
-    *   任务项可勾选标记完成。
-*   **🎓 课程追踪 (Course Tracker):**
-    *   记录并跟踪在线课程（如华图网课）的总节数和已完成节数。
-    *   显示课程学习进度百分比。
-    *   记录课程相关的笔记。
-*   **⏱️ 番茄钟 (Pomodoro Timer):**
-    *   标准番茄工作法计时器（工作、短休、长休）。
-    *   可自定义各阶段时长。
-    *   可视化时间进度环。
-    *   记录当前专注时段的活动内容。
-    *   自动将完成的工作时段计入学习统计。
-*   **⚠️ 错题本 (Error Log):**
-    *   添加错题记录（题干、模块、我的答案、正确答案、知识点、原因分析、可选截图）。
-    *   按模块筛选错题。
-    *   标记错题为已复习，记录复习次数和时间。
-    *   删除错题记录。
-*   **🧠 知识库 (Knowledge Base):**
-    *   添加知识条目（标题、分类、内容、标签、可选外部链接/文件）。
-    *   按分类筛选知识条目。
-    *   根据关键词搜索标题、内容、标签。
-*   **📈 学习统计 (Study Log):**
-    *   自动记录来自番茄钟的有效学习时长。
-    *   展示今日、本周、本月及总计学习时长。
-    *   显示最近的学习记录列表。
-    *   可清空学习记录。
-*   **📝 备考笔记 (Notes):**
-    *   提供一个通用的笔记区域，用于记录杂项、待办事项等。
-    *   笔记内容自动保存。
-*   **🔗 资源库 (Resources):**
-    *   提供常用备考网站的快捷链接。
-*   **🕒 在线时长追踪:**
-    *   自动记录用户在应用内的活跃时长。
-    *   支持页面短暂关闭后重新打开时续记时长（基于 `localStorage` 和时间戳判断）。
-    *   闲置超时（默认 15 分钟）后停止计时。
-*   **📱 响应式设计:**
-    *   界面在不同设备尺寸（桌面、平板、手机）上具有良好的适应性。
-
-## 技术栈 🛠️
-
-*   **框架:** [Vue 3](https://cn.vuejs.org/) (使用 Composition API)
-*   **构建工具:** [Vite](https://cn.vitejs.dev/)
-*   **路由:** [Vue Router 4](https://router.vuejs.org/zh/)
-*   **状态管理:** [Pinia 2](https://pinia.vuejs.org/zh/)
+*   **框架:** Vue 3 (使用 Composition API)
+*   **构建工具:** Vite
+*   **路由:** Vue Router 4 (实现客户端页面导航)
+*   **状态管理:** Pinia 2 (集中管理应用状态和与后端交互的逻辑)
+*   **HTTP 客户端:** Axios (用于向后端 API 发送请求)
+*   **UI:** HTML5, CSS3 (使用了 CSS 变量), Font Awesome (图标)
+*   **辅助库:** date-fns (日期处理), lodash-es (工具函数如 throttle/debounce), sanitize-html (内容安全清理)
 *   **语言:** JavaScript
-*   **样式:** CSS3 (使用了 CSS 变量), Font Awesome (CDN), Scoped CSS
-*   **核心概念:** 单页应用 (SPA), 组件化开发, 响应式系统
 
-## 项目设置与运行 ⚙️
+## 项目结构
 
-**先决条件:**
+*   `public/`: 静态资源，直接复制到构建输出。
+*   `src/`: 主要源代码目录。
+    *   `assets/`: CSS、图片等静态资源 (会被 Vite 处理)。
+    *   `components/`: 可复用的 UI 组件 (如 `Sidebar.vue`)。
+    *   `views/`: 页面级组件，由 Vue Router 映射 (如 `DashboardSection.vue`, `NotesSection.vue`)。
+    *   `stores/`: Pinia Store 文件，每个文件管理特定功能模块的状态和 API 交互逻辑 (如 `noteStore.js`, `taskStore.js`)。
+    *   `router/`: Vue Router 配置文件 (`index.js`)。
+    *   `utils/`: 通用工具函数 (如 `formatters.js`)。
+    *   `App.vue`: 应用的根组件，包含整体布局。
+    *   `main.js`: 应用入口，初始化 Vue、Pinia、Router。
+*   `index.html`: SPA 的 HTML 入口文件。
+*   `package.json`: 项目依赖和脚本。
+*   `vite.config.js`: Vite 配置文件。
 
-*   [Node.js](https://nodejs.org/) (推荐 **v18.x** 或 **v20.x** 及以上版本)
-*   [npm](https://www.npmjs.com/) (随 Node.js 安装) 或 [yarn](https://yarnpkg.com/) / [pnpm](https://pnpm.io/)
+## 核心功能与实现
 
-**安装步骤:**
+本项目通过组件化的方式构建界面，实现了多个功能模块：
 
-1.  **克隆仓库 (如果需要):**
-    ```bash
-    git clone [你的仓库地址]
-    cd 备考驾驶舱-vue
-    ```
-    或者直接在你现有的 `备考驾驶舱-vue` 目录下操作。
+*   **导航栏概览 (Dashboard):**
+    *   显示静态信息和倒计时。
+    *   通过 **Pinia Store** 获取各个功能模块的摘要数据（如任务进度、笔记数量等）并展示。数据源自对应 Store 从后端加载的状态。
+*   **备考时间轴 (Timeline):**
+    *   界面使用手风琴 (Accordion) 效果展示不同阶段。
+    *   任务列表和完成状态由 `taskStore` 管理，用户勾选任务时，通过 action 调用**后端 API** 更新状态。
+    *   进度条根据 `taskStore` 中的完成情况动态计算。
+*   **课程追踪 (Course Tracker):**
+    *   课程信息（总节数、已完成数、笔记）由 `courseStore` 管理。
+    *   用户修改课时或笔记时，通过 action 调用**后端 API** 进行更新。
+    *   进度条和百分比是基于 Store 中数据的计算属性。
+*   **番茄钟 (Pomodoro Timer):**
+    *   设置项（工作/休息时长）由 `pomodoroStore` 管理，从**后端 API** 加载并可更新。
+    *   **计时器逻辑**在组件本地 (`PomodoroSection.vue`) 使用 `setInterval` 实现。
+    *   模式切换、时间显示等由组件本地状态 (`ref`, `computed`) 控制。
+    *   当一个工作番茄钟完成时，会调用 `pomodoroStore` 的 action 将**学习日志发送到后端 API** 保存。
+    *   今日专注次数在 `pomodoroStore` 中管理（基于日期和 `localStorage`）。
+*   **错题本 (Error Log):**
+    *   错题数据由 `errorLogStore` 管理，负责调用**后端 API** 进行增、删、改（标记复习）、查（加载、筛选）。
+    *   组件负责展示列表、处理表单输入和触发 Store actions。
+*   **知识库 (Knowledge Base):**
+    *   知识条目由 `knowledgeStore` 管理，负责调用**后端 API** 进行增、删、查（加载、筛选、搜索）。
+    *   组件负责展示列表、处理表单输入和触发 Store actions。使用了 `sanitize-html` 处理可能的用户输入内容，并有简单的文本高亮。
+*   **学习统计 (Study Log):**
+    *   学习日志列表由 `studyLogStore` 从**后端 API** 加载。
+    *   今日/本周/本月/总计学习时长由 `studyLogStore` 中的 **getter (计算属性)** 基于加载的日志数据动态计算得出。
+    *   组件负责展示统计数据和日志列表，并提供调用 Store action 清空日志的功能。
+*   **备考笔记 (Notes):**
+    *   笔记内容（包括通用笔记和之前时间轴的阶段笔记）由 `noteStore` 管理。
+    *   采用**日志式**记录，每次“保存”都会调用 `noteStore` 的 action 通过 **POST API** 创建一条新的笔记记录。
+    *   组件负责展示所有笔记列表（按时间排序）和提供输入新笔记的区域。使用 `sanitize-html` 清理显示内容。
+*   **资源库 (Resources):**
+    *   目前为**静态**链接列表，硬编码在 `ResourcesSection.vue` 组件中。
 
-2.  **安装依赖:**
-    ```bash
-    npm install
-    # 或者
-    # yarn install
-    # 或者
-    # pnpm install
-    ```
+## 运行方式
 
-**运行开发服务器:**
+1.  安装依赖: `npm install`
+2.  启动开发服务器: `npm run dev` (通常运行在 `http://localhost:5173`)
+3.  构建生产版本: `npm run build` (输出到 `dist` 目录)
 
-```bash
-npm run dev
-# 或者
-# yarn dev
-# 或者
-# pnpm dev
-Use code with caution.
-Markdown
-在浏览器中打开输出的本地地址 (通常是 http://localhost:5173/)。应用支持热模块替换 (HMR)，修改代码后通常无需刷新页面即可看到更新。
-构建生产版本:
-npm run build
-# 或者
-# yarn build
-# 或者
-# pnpm build
-Use code with caution.
-Bash
-构建后的文件会输出到 dist 目录。
-本地预览生产版本:
-npm run preview
-# 或者
-# yarn preview
-# 或者
-# pnpm preview
-Use code with caution.
-Bash
-项目结构 📂
-备考驾驶舱-vue/
-├── public/             # 静态资源 (直接复制)
-├── src/                # 源代码
-│   ├── assets/         # 静态资源 (会被处理)
-│   ├── components/     # 可复用 UI 组件 (如 Sidebar)
-│   ├── views/          # 页面级路由组件 (如 DashboardSection)
-│   ├── stores/         # Pinia 状态管理 (如 appStore, errorLogStore)
-│   ├── router/         # Vue Router 配置
-│   ├── utils/          # 工具函数 (可选)
-│   ├── App.vue         # 根组件
-│   └── main.js         # 应用入口
-├── index.html          # HTML 入口
-├── package.json        # 依赖和脚本配置
-├── README.md           # 就是这个文件
-└── vite.config.js      # Vite 配置
-Use code with caution.
-数据持久化 💾
-本应用的所有用户数据（任务进度、笔记、课程进度、番茄钟设置、错题、知识、学习记录、在线时长状态等）都存储在浏览器的 localStorage 中。
-重要提示:
-数据仅保存在当前使用的浏览器中。清除浏览器数据（缓存、LocalStorage）会导致所有记录丢失！
-在不同的浏览器或无痕模式下使用，数据不会互通。
-目前没有云同步功能。
-联系方式 📧
-段绪程 2253864680@qq.com
-
-index.html 是房子的地基和入口门。
-main.js 是负责通电、通水、安装智能家居中控（Vue、Router、Pinia）的工程师。
-App.vue 是房子的整体框架、外墙、以及固定安装的门窗（比如侧边栏）。中间客厅 (<router-view>) 的家具会根据你的选择（URL）而改变。
-router/index.js 是导航地图，告诉你去卧室（/dashboard）该走哪条路，去书房（/timeline）该走哪条路。
-stores/ 是中央储藏室和控制中心，存放共享物品（数据）和操作说明（方法）。
-components/Sidebar.vue 是一个预制好的精美书架（可复用 UI 组件）。
-views/TimelineSection.vue 是书房（具体页面组件）里的所有家具和装饰（内容和交互）。
-assets/gwy-global.css 是整个房子的装修风格指南（全局样式）
-
-好的，我们来模拟一次完整的添加新功能的流程。假设我们要添加一个**“短期学习目标” (Study Goals)** 的功能：允许用户添加一些近期的、具体的小目标（比如“完成资料分析专项练习第一章”、“整理申论名言警句 10 条”），可以标记完成，并持久化存储。
-基本流程：
-数据建模与状态管理 (Pinia): 定义目标的数据结构，并在 Pinia Store 中管理目标列表（增、删、改、查、持久化）。
-路由配置 (Vue Router): 为新功能添加一个新的页面路径。
-创建视图组件 (View Component): 创建一个新的 .vue 文件来展示和操作学习目标。
-实现组件逻辑: 在组件的 <script setup> 中，连接到 Pinia Store，处理用户输入和交互。
-添加样式: 在组件的 <style scoped> 中添加样式。
-添加入口/导航: 在侧边栏 (Sidebar.vue) 中添加指向新页面的链接。
-更新配置 (如果需要): 比如添加新的 localStorage key。
+**注意:** 本前端应用需要连接到**后端 API**才能正常工作（加载和保存数据）。请确保后端服务已启动并在前端正确配置了 API 地址。
