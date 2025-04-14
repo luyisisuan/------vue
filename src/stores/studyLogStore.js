@@ -1,192 +1,163 @@
+// src/stores/studyLogStore.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import axios from 'axios';
-import { startOfDay, startOfWeek, startOfMonth, parseISO } from 'date-fns';
 
+// API URLs - 确保这些与你的后端路由匹配
 const API_LOG_URL = 'http://localhost:8080/api/pomodoro/log';
+const API_STATS_URL = 'http://localhost:8080/api/activity/stats';
+// const API_TODAY_ONLINE_URL = 'http://localhost:8080/api/activity/today'; // 如果需要单独获取
 
 export const useStudyLogStore = defineStore('studyLog', () => {
   // --- State ---
-  const logs = ref([]);           // 从 API 获取的学习日志列表
-  const isLoading = ref(false);    // 是否正在加载日志
-  const error = ref(null);         // 加载或操作日志时的错误信息
+  const logs = ref([]); // 学习日志列表 (来自番茄钟等明确记录)
+  const isLoadingLogs = ref(false);
+  const logError = ref(null);
+
+  // 聚合统计数据 (从后端获取)
+  const totalDurationSeconds = ref(0);
+  const todayDurationSeconds = ref(0); // 番茄钟等学习时长
+  const weekDurationSeconds = ref(0);
+  const monthDurationSeconds = ref(0);
+  const todayOnlineSeconds = ref(0);   // 总在线时长
+  const isLoadingStats = ref(false);
+  const statsError = ref(null);
 
   // --- Getters ---
-  // 根据日志的开始和结束时间计算学习时长，单位为秒
-
-  const totalDurationSeconds = computed(() => {
-    return logs.value.reduce((sum, log) => {
-      try {
-        const start = parseISO(log.startTime);
-        const end = parseISO(log.endTime);
-        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
-          return sum;
-        }
-        return sum + (end.getTime() - start.getTime()) / 1000;
-      } catch (e) {
-        return sum;
-      }
-    }, 0);
-  });
-
-  const todayDurationSeconds = computed(() => {
-    const todayStart = startOfDay(new Date());
-    return logs.value.reduce((sum, log) => {
-      try {
-        const start = parseISO(log.startTime);
-        const end = parseISO(log.endTime);
-        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) return sum;
-        // 如果日志的开始时间在今天之后，则计入今日学习时长
-        if (start >= todayStart) {
-          return sum + (end.getTime() - start.getTime()) / 1000;
-        }
-      } catch (e) {
-        console.warn(`Error parsing log time: ${log.startTime} ~ ${log.endTime}`, e);
-      }
-      return sum;
-    }, 0);
-  });
-
-  const weekDurationSeconds = computed(() => {
-    const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return logs.value.reduce((sum, log) => {
-      try {
-        const start = parseISO(log.startTime);
-        const end = parseISO(log.endTime);
-        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) return sum;
-        if (start >= weekStart) {
-          return sum + (end.getTime() - start.getTime()) / 1000;
-        }
-      } catch (e) {
-        console.warn(`Error parsing log time: ${log.startTime} ~ ${log.endTime}`, e);
-      }
-      return sum;
-    }, 0);
-  });
-
-  const monthDurationSeconds = computed(() => {
-    const monthStart = startOfMonth(new Date());
-    return logs.value.reduce((sum, log) => {
-      try {
-        const start = parseISO(log.startTime);
-        const end = parseISO(log.endTime);
-        if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) return sum;
-        if (start >= monthStart) {
-          return sum + (end.getTime() - start.getTime()) / 1000;
-        }
-      } catch (e) {
-        console.warn(`Error parsing log time: ${log.startTime} ~ ${log.endTime}`, e);
-      }
-      return sum;
-    }, 0);
-  });
+  // 合并加载状态
+  const isLoading = computed(() => isLoadingLogs.value || isLoadingStats.value);
+  // 暴露 state ref 的 getter (可选，组件可以直接用 storeToRefs 获取 state)
+  // const getTotalDuration = computed(() => totalDurationSeconds.value);
+  // ... 其他类似 getter ...
 
   // --- Actions ---
 
   /**
-   * 从后端 API 加载最近的学习日志记录
-   * @param {number} limit 加载记录的条数，默认 50 条
+   * 从后端加载最近的学习日志记录
    */
   async function loadRecentLogs(limit = 50) {
-    isLoading.value = true;
-    error.value = null;
+    isLoadingLogs.value = true;
+    logError.value = null;
     try {
       const response = await axios.get(`${API_LOG_URL}/recent`, { params: { limit } });
       if (Array.isArray(response.data)) {
-        logs.value = response.data;
-        console.log(`Loaded ${logs.value.length} recent study logs from API.`);
+          logs.value = response.data;
+          console.log(`Loaded ${logs.value.length} recent study logs.`);
       } else {
-        console.error("Invalid data format received:", response.data);
-        logs.value = [];
-        error.value = '加载日志数据格式错误。';
+           logs.value = [];
+           logError.value = '加载日志数据格式错误。';
+           console.error("Invalid data format for study logs:", response.data);
       }
     } catch (err) {
-      console.error('Error loading recent study logs:', err);
-      const backendError = err.response?.data?.message || err.message || '未知网络错误';
-      error.value = `无法加载学习日志: ${backendError}`;
       logs.value = [];
+      const backendError = err.response?.data?.message || err.message || '未知网络错误';
+      logError.value = `无法加载学习日志: ${backendError}`;
+      console.error('Error loading recent study logs:', err);
     } finally {
-      isLoading.value = false;
+      isLoadingLogs.value = false;
     }
   }
 
   /**
-   * 添加一条新的学习日志记录到后端
-   * @param {object} logData 包含 startTime (ISO string), endTime (ISO string), activity (string), source (string)
-   * @returns {Promise<boolean>} 操作是否成功
+   * 从后端加载聚合的学习统计数据
+   */
+  async function loadActivityStats() {
+      isLoadingStats.value = true;
+      statsError.value = null;
+      try {
+          const response = await axios.get(API_STATS_URL);
+          const stats = response.data;
+          // 假设后端 /stats 返回的字段与 state ref 名称一致
+          totalDurationSeconds.value = stats.total || 0;
+          weekDurationSeconds.value = stats.week || 0;
+          monthDurationSeconds.value = stats.month || 0;
+          todayDurationSeconds.value = stats.today || 0;     // 番茄钟时长
+          todayOnlineSeconds.value = stats.todayOnline || 0; // 在线时长
+          console.log("Loaded activity stats:", stats);
+      } catch (err) {
+          console.error("Error loading activity stats:", err);
+          const backendError = err.response?.data?.message || err.message || '未知网络错误';
+          statsError.value = `无法加载统计数据: ${backendError}`;
+          // Reset stats on error
+          totalDurationSeconds.value = 0; weekDurationSeconds.value = 0;
+          monthDurationSeconds.value = 0; todayDurationSeconds.value = 0;
+          todayOnlineSeconds.value = 0;
+      } finally {
+          isLoadingStats.value = false;
+      }
+  }
+
+  /**
+   * 添加一条新的学习日志记录 (由 pomodoroStore 调用)
    */
   async function addLog(logData) {
-    if (!logData || !logData.startTime || !logData.endTime) {
-      console.warn("Attempted to add log with missing data.", logData);
-      error.value = '缺少必要的日志信息。';
-      return false;
-    }
+    logError.value = null;
     try {
-      const start = parseISO(logData.startTime);
-      const end = parseISO(logData.endTime);
-      if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) {
-        console.warn("Invalid start or end time in log data.", logData);
-        error.value = '无效的开始或结束时间。';
-        return false;
-      }
-    } catch (e) {
-      console.warn("Error parsing log time.", e);
-      error.value = '时间格式错误。';
-      return false;
-    }
+      logData.durationSeconds = Number(logData.durationSeconds || 0);
+      if (logData.durationSeconds <= 0) { return false; }
 
-    error.value = null;
-    try {
-      const response = await axios.post(API_LOG_URL, logData);
-      console.log('Study log added via API:', response.data);
-      // 添加成功后重新加载日志列表，确保统计信息更新
-      await loadRecentLogs();
+      await axios.post(API_LOG_URL, logData);
+      console.log('Study log added:', logData.activity);
+      // 添加成功后重新加载统计数据
+      await loadActivityStats();
+      // 可选：也重新加载最近日志列表
+      // await loadRecentLogs();
       return true;
     } catch (err) {
-      console.error('Error adding study log via API:', err);
+      console.error('Error adding study log:', err);
       const backendError = err.response?.data?.message || err.message || '未知网络错误';
-      error.value = `记录学习日志失败: ${backendError}`;
+      logError.value = `记录学习日志失败: ${backendError}`;
       return false;
     }
   }
 
   /**
    * 清空所有学习日志记录
-   * @returns {Promise<boolean>} 操作是否成功
    */
   async function clearAllLogs() {
-    isLoading.value = true;
-    error.value = null;
+    isLoadingLogs.value = true;
+    isLoadingStats.value = true;
+    logError.value = null;
+    statsError.value = null;
+    let success = false;
     try {
       await axios.delete(`${API_LOG_URL}/all`);
       logs.value = [];
-      console.log('All study logs cleared via API.');
-      return true;
+      await loadActivityStats(); // 重新加载统计（应为 0）
+      console.log('All study logs cleared.');
+      success = true;
     } catch (err) {
-      console.error('Error clearing study logs:', err);
-      const backendError = err.response?.data?.message || err.message || '未知网络错误';
-      error.value = `清空日志失败: ${backendError}`;
-      return false;
+       console.error('Error clearing study logs:', err);
+       const backendError = err.response?.data?.message || err.message || '未知网络错误';
+       logError.value = `清空日志失败: ${backendError}`;
+       success = false;
     } finally {
-      isLoading.value = false;
+      isLoadingLogs.value = false;
+      isLoadingStats.value = false;
     }
+    return success;
   }
 
   // --- Initialization ---
   loadRecentLogs();
+  loadActivityStats();
 
+  // --- Expose ---
   return {
-    // State
+    // State (for storeToRefs)
     logs,
-    isLoading,
-    error,
-    // Getters
+    logError,
+    statsError,
     totalDurationSeconds,
     todayDurationSeconds,
     weekDurationSeconds,
     monthDurationSeconds,
+    todayOnlineSeconds,
+    // Computed Getters
+    isLoading,
     // Actions
     loadRecentLogs,
+    loadActivityStats,
     clearAllLogs,
     addLog
   };

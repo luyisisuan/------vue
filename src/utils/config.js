@@ -8,6 +8,7 @@ export default {
       course: 'dxcGwyCourseTracker_v2',
       pomodoro: 'dxcGwyPomodoroSettings_v2',
       summary: 'dxcGwySummaryData_v1',
+      studyGoals: 'dxcGwyStudyGoals_v1',
       errorLog: 'dxcGwyErrorLog_v1',
       knowledgeBase: 'dxcGwyKnowledgeBase_v1',
       studyLog: 'dxcGwyStudyLog_v1',
@@ -27,6 +28,7 @@ export default {
     ],
     INACTIVITY_TIMEOUT_MS: 15 * 60 * 1000,
     ACTIVITY_THROTTLE_MS: 5 * 1000,
-    SHORT_CLOSURE_THRESHOLD_MS: 2 * 60 * 1000,
-    SAVE_THROTTLE_MS: 1500 // 笔记节流保存间隔
+    SAVE_THROTTLE_MS: 1500 ,// 笔记节流保存间隔
+    // **新增:** 活动心跳间隔 (秒)
+    ACTIVITY_PING_INTERVAL_SECONDS: 30, // <<< 例如每 30 秒 ping 一次
   };

@@ -19,7 +19,6 @@
         <div>
           <strong>目标:</strong> 2025下半年 公务员考试<br>
           <span class="countdown-text">
-            <!-- 倒计时仍然在本地计算 -->
             距报名约: <strong>{{ daysToReg }}</strong> 天 |
             距笔试约: <strong>{{ daysToExam }}</strong> 天
           </span>
@@ -29,50 +28,39 @@
 
     <h2><i class="fas fa-chart-line icon-gradient"></i> 关键进度摘要</h2>
 
-    <!-- 显示全局加载或错误状态 (可选) -->
     <div v-if="isLoadingAny" class="loading-indicator card">加载摘要数据中...</div>
-    <div v-else-if="loadingErrorAny" class="error-message card" style="color: red;">
+    <div v-else-if="loadingErrorAny" class="error-message card">
         加载摘要数据时出错，部分数据可能不准确。
     </div>
 
-    <div v-else class="progress-summary-grid">
-      <!-- 任务摘要卡片 - **MODIFIED:** 使用 taskStore getter -->
+    <!-- **MODIFIED:** Reduced grid items -->
+    <div v-else class="progress-summary-grid dashboard-summary-grid">
       <div class="summary-card" :class="getSummaryCardClass('tasks')">
         <i class="fas fa-tasks"></i>
         <span class="summary-value">{{ taskSummaryDisplay }}</span>
         <span class="summary-label">阶段任务完成</span>
       </div>
-      <!-- 课程摘要卡片 - **MODIFIED:** 使用 courseStore getter -->
       <div class="summary-card" :class="getSummaryCardClass('course')">
         <i class="fas fa-book-open"></i>
         <span class="summary-value">{{ courseProgressDisplay }}%</span>
         <span class="summary-label">课程学习进度</span>
       </div>
-      <!-- 番茄钟摘要卡片 - 使用 pomodoroStore state -->
       <div class="summary-card" :class="getSummaryCardClass('pomodoro')">
         <i class="fas fa-fire"></i>
         <span class="summary-value">{{ pomodorosToday }}</span>
         <span class="summary-label">今日专注次数</span>
       </div>
-      <!-- 错题摘要卡片 - 使用 errorLogStore getter -->
       <div class="summary-card" :class="getSummaryCardClass('error')">
         <i class="fas fa-exclamation-triangle"></i>
-         <!-- errorCount getter 现在可能不存在，需要从列表长度计算 -->
         <span class="summary-value">{{ errorCountDisplay }}</span>
         <span class="summary-label">记录错题数</span>
       </div>
-      <!-- 知识库摘要卡片 - 使用 knowledgeStore getter -->
       <div class="summary-card" :class="getSummaryCardClass('knowledge')">
         <i class="fas fa-brain"></i>
         <span class="summary-value">{{ knowledgeItemCount }}</span>
         <span class="summary-label">知识库条目</span>
       </div>
-      <!-- 今日学习时长摘要卡片 - 使用 studyLogStore getter -->
-      <div class="summary-card" :class="getSummaryCardClass('study')">
-        <i class="fas fa-clock"></i>
-        <span class="summary-value">{{ studyTodayFormatted }}</span>
-        <span class="summary-label">今日学习时长</span>
-      </div>
+      <!-- Removed Study Today Card -->
     </div>
   </div>
 </template>
@@ -81,67 +69,60 @@
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import config from '@/config.js';
-// 导入所有需要的 Stores
+// Import necessary Stores
 import { usePomodoroStore } from '@/stores/pomodoroStore.js';
 import { useErrorLogStore } from '@/stores/errorLogStore.js';
 import { useKnowledgeStore } from '@/stores/knowledgeStore.js';
-import { useStudyLogStore } from '@/stores/studyLogStore.js';
+// **REMOVED:** No longer need StudyLogStore for this component
+// import { useStudyLogStore } from '@/stores/studyLogStore.js';
 import { useCourseStore } from '@/stores/courseStore.js';
-import { useTaskStore } from '@/stores/taskStore.js'; // <<< 导入 Task Store
-// 导入格式化函数
-import { formatDuration } from '@/utils/formatters.js';
-// 移除了 loadData from storage
+import { useTaskStore } from '@/stores/taskStore.js';
+// **REMOVED:** No longer need formatDuration
+// import { formatDuration } from '@/utils/formatters.js';
 
-// 获取 Store 实例
+// Get Store instances
 const pomodoroStore = usePomodoroStore();
 const errorLogStore = useErrorLogStore();
-const knowledgeStore = useKnowledgeStore(); // 使用正确的 Store 名称
-const studyLogStore = useStudyLogStore();
+const knowledgeStore = useKnowledgeStore();
 const courseStore = useCourseStore();
-const taskStore = useTaskStore(); // <<< 获取 Task Store 实例
+const taskStore = useTaskStore();
 
-// --- 响应式状态 (仅倒计时) ---
+// Local state for countdown
 const daysToReg = ref('...');
 const daysToExam = ref('...');
 
-// --- 从 Stores 获取响应式数据 ---
+// Get reactive state/getters from Stores
 const { pomodorosToday } = storeToRefs(pomodoroStore);
-// **MODIFIED:** 从 taskStore 获取任务摘要 getter
 const { taskSummary: taskSummaryFromStore, isLoading: isLoadingTasks, error: tasksError } = storeToRefs(taskStore);
-// **MODIFIED:** 从 courseStore 获取进度 getter
 const { progressPercentage: courseProgressPercentage, isLoading: isLoadingCourse, error: courseError } = storeToRefs(courseStore);
-// **MODIFIED:** errorCount 需要重新计算或从 Store 获取列表长度
 const { errors: errorList, isLoading: isLoadingErrors, error: errorLogError } = storeToRefs(errorLogStore);
 const { itemCount: knowledgeItemCount, isLoading: isLoadingKnowledge, error: knowledgeError } = storeToRefs(knowledgeStore);
-// **MODIFIED:** 获取秒数 getter 用于格式化
-const { todayDurationSeconds, isLoading: isLoadingStudyLog, error: studyLogError } = storeToRefs(studyLogStore);
+// **REMOVED:** No longer need todayDurationSeconds from studyLogStore
+// const { todayDurationSeconds, isLoading: isLoadingStudyLog, error: studyLogError } = storeToRefs(studyLogStore);
 
-// --- 计算属性 (用于模板显示) ---
-const studyTodayFormatted = computed(() => formatDuration(todayDurationSeconds.value || 0)); // 添加默认值
-const courseProgressDisplay = computed(() => courseProgressPercentage.value || 0); // 添加默认值
-const taskSummaryDisplay = computed(() => taskSummaryFromStore.value || '0 / 0'); // 使用 Store 的 getter
-// **MODIFIED:** 计算错题数
-const errorCountDisplay = computed(() => errorList.value?.length || 0); // 从列表长度计算
+// Computed properties for display
+const courseProgressDisplay = computed(() => courseProgressPercentage.value || 0);
+const taskSummaryDisplay = computed(() => taskSummaryFromStore.value || '0 / 0');
+const errorCountDisplay = computed(() => errorList.value?.length || 0);
 
-// **MODIFIED:** 计算全局加载状态
+// Combined loading state (remove studyLogStore loading)
 const isLoadingAny = computed(() =>
     isLoadingTasks.value ||
     isLoadingCourse.value ||
     isLoadingErrors.value ||
-    isLoadingKnowledge.value ||
-    isLoadingStudyLog.value
+    isLoadingKnowledge.value
+    // || isLoadingStudyLog.value // Removed
 );
-// **MODIFIED:** 计算是否有任何加载错误
+// Combined error state (remove studyLogStore error)
 const loadingErrorAny = computed(() =>
     tasksError.value ||
     courseError.value ||
     errorLogError.value ||
-    knowledgeError.value ||
-    studyLogError.value
+    knowledgeError.value
+    // || studyLogError.value // Removed
 );
 
-
-// --- 方法 ---
+// Methods
 function updateCountdown() {
     try {
         const now = new Date(); now.setHours(0, 0, 0, 0);
@@ -161,25 +142,30 @@ function updateCountdown() {
     }
 }
 
-// **REMOVED:** 不再需要 loadRemainingSummaries 或 loadTaskSummary
-// function loadTaskSummary() { ... }
-
 function getSummaryCardClass(type) {
-    // 可以根据需要添加更多样式逻辑
     return `type-${type}`;
 }
 
-// --- 生命周期 ---
+// Lifecycle
 onMounted(() => {
-  updateCountdown(); // 倒计时仍在本地处理
-  // 数据摘要现在依赖于 Pinia Stores 的初始化加载
-  console.log("DashboardSection mounted. Data summaries rely on store initialization.");
+  updateCountdown();
+  console.log("DashboardSection mounted.");
 });
 
 </script>
 
 <style scoped>
-/* --- Dashboard Specific Styles --- */
+/* Styles remain the same as the previous version, */
+/* but you might want to adjust .dashboard-summary-grid if needed */
+/* e.g., change grid columns if you have fewer items */
+.dashboard-summary-grid {
+    /* Example: If you now have 5 items, maybe fit 5 columns on large screens */
+    /* grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); */ /* Keeps auto-fit */
+     grid-template-columns: repeat(5, 1fr); /* Force 5 columns */
+     /* Adjust gap if needed */
+     gap: 1rem;
+}
+
 
 /* info-highlight-card Styles */
 .info-highlight-card { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; background: var(--gradient-primary); color: white; padding: 1.5rem; border-radius: var(--card-border-radius); margin-bottom: 2rem; box-shadow: var(--shadow-medium); }
@@ -199,28 +185,23 @@ onMounted(() => {
 .summary-card.type-pomodoro i { color: var(--accent-color); }
 .summary-card.type-error i { color: var(--danger-color); }
 .summary-card.type-knowledge i { color: var(--info-color); }
-.summary-card.type-study i { color: var(--study-color); }
-.summary-value { display: block; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; color: var(--text-color); min-height: 1.3em; /* Ensure consistent height */ }
+/* Removed .type-study */
+.summary-value { display: block; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; color: var(--text-color); min-height: 1.3em; }
 .summary-label { font-size: 0.85rem; color: var(--text-light); }
 
 /* Loading/Error Styles */
 .loading-indicator, .error-message { text-align: center; padding: 1rem; color: var(--text-light); }
 .error-message { color: var(--danger-color); }
-.section-header h1 i.icon-gradient { /* Ensure header icon style */
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-}
-
+.section-header h1 i.icon-gradient { background: var(--gradient-primary); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 /* Responsive */
 @media (max-width: 992px) {
     .info-highlight-card { grid-template-columns: 1fr; }
     .countdown-display { justify-content: flex-start; text-align: left; }
-    /* Global grid styles handle summary grid */
+    .dashboard-summary-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); } /* Revert to auto-fit */
 }
 @media (max-width: 768px) {
+    .dashboard-summary-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
     .summary-card { padding: 0.8rem; }
     .summary-value { font-size: 1.2rem; }
     .summary-label { font-size: 0.75rem; }

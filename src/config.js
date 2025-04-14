@@ -29,5 +29,6 @@ export default { // <--- 使用 export default
     INACTIVITY_TIMEOUT_MS: 15 * 60 * 1000,
     ACTIVITY_THROTTLE_MS: 5 * 1000,
     SHORT_CLOSURE_THRESHOLD_MS: 2 * 60 * 1000,
-    SAVE_THROTTLE_MS: 1500 // 笔记节流保存间隔
+    SAVE_THROTTLE_MS: 1500, // 笔记节流保存间隔
+    ACTIVITY_PING_INTERVAL_SECONDS: 30 // 活动心跳间隔（秒）
   };
