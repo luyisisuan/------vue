@@ -43,13 +43,19 @@
           <span v-else class="form-hint">选择要上传的图片文件</span>
         </div>
         <div class="form-group form-actions">
-          <button type="submit" class="btn btn-primary" :disabled="isLoading || isUploading">
-            <i class="fas fa-save"></i> {{ isLoading ? '处理中...' : (isUploading ? '上传中...' : '添加错题') }}
+          <!-- 使用 isAdding 状态判断整体过程，isUploading 用于更具体的上传提示 -->
+          <button type="submit" class="btn btn-primary" :disabled="isAdding || isLoading">
+            <i class="fas fa-save"></i> {{ isAdding ? (isUploading ? '上传中...' : '添加中...') : '添加错题' }}
           </button>
         </div>
       </form>
-      <p v-if="uploadError || error" class="error-message" style="color: red; margin-top: 0.5em;">
-        {{ uploadError || error }}
+      <!-- 显示添加过程中的特定错误 -->
+      <p v-if="addErrorState" class="error-message" style="color: red; margin-top: 0.5em;">
+        {{ addErrorState }}
+      </p>
+      <!-- 显示通用的加载/删除/标记错误 -->
+      <p v-else-if="error && !isAdding" class="error-message" style="color: red; margin-top: 0.5em;">
+        操作失败: {{ error }}
       </p>
     </div>
 
@@ -67,9 +73,8 @@
         <button @click="clearFilter" class="btn btn-secondary btn-small"><i class="fas fa-times"></i> 清除筛选</button>
       </div>
       <div id="error-log-list-el" class="error-log-container">
-        <div v-if="isLoading" class="loading-indicator">加载中...</div>
-        <div v-else-if="error && !isLoading" class="error-message">错误: {{ error }}</div>
-        <!-- **MODIFIED:** 添加了 !filteredErrors 检查 -->
+        <div v-if="isLoading && !isAdding" class="loading-indicator">加载错题列表中...</div>
+        <div v-else-if="error && !isLoading && !isAdding && filteredErrors.length === 0" class="error-message">加载错题时出错: {{ error }}</div>
         <div v-else-if="!filteredErrors || filteredErrors.length === 0" class="placeholder-text">
              {{ selectedFilterSubject === 'all' ? '暂无错题记录，快去添加吧！' : `在 "${selectedFilterSubject}" 模块下暂无错题记录。` }}
         </div>
@@ -94,7 +99,9 @@
             </div>
             <div class="error-item-footer">
               <span class="review-info">复习次数: {{ item.reviewCount || 0 }} | 上次复习: {{ item.lastReviewDate ? formatTimestamp(item.lastReviewDate) : '从未' }}</span>
+              <!-- ****** 这里是修改后的点击事件处理函数 ****** -->
               <button @click="markReviewedHandler(item.id)" class="btn btn-secondary btn-small mark-reviewed-btn"><i class="fas fa-check"></i> 标记已复习</button>
+              <!-- ***************************************** -->
               <button @click="deleteErrorHandler(item.id)" class="btn btn-danger btn-small delete-error-btn"><i class="fas fa-trash"></i> 删除</button>
             </div>
           </div>
@@ -114,31 +121,30 @@ import { formatTimestamp } from '@/utils/formatters.js';
 // Store
 const errorLogStore = useErrorLogStore();
 const {
-  filteredErrors, // This should be a computed or state from the store
+  filteredErrors,
   isLoading,
-  error,
-  isUploading,
-  uploadError,
+  error,        // 通用错误
+  isAdding,     // 添加错题的整体过程状态
+  isUploading,  // 文件上传状态
+  addErrorState,// 添加操作特定的错误信息
   availableSubjects,
-  // Removed errorCount if not directly provided by store getter
 } = storeToRefs(errorLogStore);
 
 // Local State
 const selectedFilterSubject = ref('all');
 const newErrorForm = reactive({
   question: '', subject: '', myAnswer: '', correctAnswer: '',
-  knowledgePoint: '', reason: '', imageFile: null, // Store original filename here if needed
+  knowledgePoint: '', reason: '', imageFile: null, // 这个字段现在主要用于内部逻辑或显示，上传时直接用 file object
 });
-const selectedFileObject = ref(null); // Store the actual File object
+const selectedFileObject = ref(null); // 存储实际的 File 对象
 
 // Constants
-const FILE_DOWNLOAD_BASE_URL = 'http://localhost:8080/api/files/download';
+const FILE_DOWNLOAD_BASE_URL = 'http://localhost:8080/api/files/download'; // 确保这个基础 URL 正确
 
 // Methods
 function handleFileChange(event) {
   const file = event.target.files?.[0];
   selectedFileObject.value = file || null;
-  // No need to update newErrorForm.imageFile here unless backend needs it during initial creation
 }
 
 async function submitNewError() {
@@ -149,78 +155,96 @@ async function submitNewError() {
 
   const errorData = {
     question: newErrorForm.question.trim(), subject: newErrorForm.subject,
-    myAnswer: newErrorForm.myAnswer?.trim() || 'N/A',
+    myAnswer: newErrorForm.myAnswer?.trim() || 'N/A', // 处理空字符串
     correctAnswer: newErrorForm.correctAnswer.trim(),
-    knowledgePoint: newErrorForm.knowledgePoint?.trim() || 'N/A',
+    knowledgePoint: newErrorForm.knowledgePoint?.trim() || 'N/A', // 处理空字符串
     reason: newErrorForm.reason.trim(),
-    // Optionally send original filename if backend uses it initially
-    // imageFile: selectedFileObject.value?.name
   };
 
-  // Call store action, passing the file object separately
+  // 调用 store action, 传递错题数据和文件对象
   const success = await errorLogStore.addError(errorData, selectedFileObject.value);
 
   if (success) {
-      // Reset form
+      // 清空表单
       newErrorForm.question = ''; newErrorForm.subject = ''; newErrorForm.myAnswer = '';
       newErrorForm.correctAnswer = ''; newErrorForm.knowledgePoint = ''; newErrorForm.reason = '';
-      newErrorForm.imageFile = null;
-      selectedFileObject.value = null;
+      // newErrorForm.imageFile = null; // 这个字段可能不需要重置，因为它不直接绑定到表单
+      selectedFileObject.value = null; // 清除已选文件对象
+      // 重置文件输入框
       const fileInput = document.getElementById('error-image-el');
       if (fileInput) fileInput.value = '';
       alert('错题添加成功！');
   } else {
-      alert(`添加错题失败: ${uploadError.value || error.value || '未知错误'}`);
+      // 错误信息现在由 Store 的 addErrorState 或 error 提供，已在模板中显示
+      // alert(`添加错题失败: ${addErrorState.value || error.value || '未知错误'}`); // 可以移除此 alert
   }
 }
 
 function clearFilter() {
   selectedFilterSubject.value = 'all';
-  // Watcher will trigger loadErrors
+  // Watcher 会自动触发 loadErrors
 }
 
+// ****** 这里是修改后的函数调用 ******
 async function markReviewedHandler(errorId) {
-    await errorLogStore.markReviewed(errorId);
-    if (error.value) { // Check for general error after action
+    // 使用 Store 中正确的函数名 markAsReviewed
+    await errorLogStore.markAsReviewed(errorId);
+    if (error.value) { // 检查 Store 中的通用错误状态
         alert(`标记复习失败: ${error.value}`);
     }
+    // 成功时不需要 alert，因为列表会自动更新显示最新状态
 }
+// **********************************
 
 async function deleteErrorHandler(errorId) {
   if (confirm('确定要删除这条错题记录吗？此操作无法撤销。')) {
     const success = await errorLogStore.deleteError(errorId);
     if (!success) {
+        // 错误信息来自 store 的 error 状态
         alert(`删除失败: ${error.value || '未知错误'}`);
     } else {
         alert('删除成功！');
+        // 列表会自动更新
     }
   }
 }
 
 function getFileDownloadUrl(fileIdentifier) {
     if (!fileIdentifier) return '#';
-    // Ensure no leading/trailing slashes issues
+    // 简单的 URL 拼接，确保没有多余或缺失的斜杠
+    const baseUrl = FILE_DOWNLOAD_BASE_URL.endsWith('/') ? FILE_DOWNLOAD_BASE_URL : FILE_DOWNLOAD_BASE_URL + '/';
     const identifier = fileIdentifier.startsWith('/') ? fileIdentifier.substring(1) : fileIdentifier;
-    return `${FILE_DOWNLOAD_BASE_URL}/${identifier}`;
+    return `${baseUrl}${identifier}`;
 }
 
 function getFilenameFromIdentifier(fileIdentifier) {
     if (!fileIdentifier) return '';
+    // 尝试从路径中提取文件名 (兼容 / 和 \)
     const lastSlashIndex = Math.max(fileIdentifier.lastIndexOf('/'), fileIdentifier.lastIndexOf('\\'));
     return lastSlashIndex >= 0 ? fileIdentifier.substring(lastSlashIndex + 1) : fileIdentifier;
 }
 
-// Watcher
+// Watcher: 监听筛选条件变化，调用 store action 加载数据
 watch(selectedFilterSubject, (newFilter) => {
-  // Ensure loadErrors action exists in the store
   if (typeof errorLogStore.loadErrors === 'function') {
       errorLogStore.loadErrors(newFilter === 'all' ? null : newFilter);
   } else {
-       console.error("errorLogStore.loadErrors action is not defined!");
+       console.error("错误：errorLogStore.loadErrors action 未定义!");
   }
-});
+}, { immediate: false }); // 不立即执行，等待用户选择
+
+// 注意: Store 初始化时会调用 loadErrors()，所以这里 immediate: false 是合适的
+
+// 可以在 onMounted 中再调用一次 loadErrors，确保初始加载
+// import { onMounted } from 'vue';
+// onMounted(() => {
+//   if (!filteredErrors.value?.length && !isLoading.value) { // 避免重复加载
+//       errorLogStore.loadErrors(selectedFilterSubject.value === 'all' ? null : selectedFilterSubject.value);
+//   }
+// });
 
 </script>
+
 <style scoped>
 /* --- Error Log Specific Styles --- */
 .error-log-add-card {

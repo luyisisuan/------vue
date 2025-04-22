@@ -48,7 +48,7 @@
       <div class="summary-card" :class="getSummaryCardClass('pomodoro')">
         <i class="fas fa-fire"></i>
         <span class="summary-value">{{ pomodorosToday }}</span>
-        <span class="summary-label">今日专注次数</span>
+        <span class="summary-label">总专注次数</span>
       </div>
       <div class="summary-card" :class="getSummaryCardClass('error')">
         <i class="fas fa-exclamation-triangle"></i>

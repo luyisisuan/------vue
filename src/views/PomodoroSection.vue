@@ -80,7 +80,7 @@
             </div>
           </div>
         </div>
-        <p class="pomodoros-today-count">今日已完成专注次数: {{ pomodorosToday }}</p>
+        <p class="pomodoros-today-count">你已经完成的专注次数: {{ pomodorosToday }}次</p>
       </div>
     </div>
   </div>

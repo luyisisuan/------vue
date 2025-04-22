@@ -39,7 +39,7 @@
         <!-- 今日在线时长 -->
          <div class="today-online-stat">
              <i class="fas fa-desktop"></i>
-             今日在线活跃时长: <strong>{{ formatDuration(todayOnlineSeconds) }}</strong>
+             今日在线活跃时长: <strong>{{ formatDuration(displayedOnlineSeconds) }}</strong>
              <span class="tooltip">根据页面活跃时间记录，与专注学习时长分开统计。</span>
          </div>
       </div>
@@ -57,9 +57,11 @@
               <span class="activity">{{ item.activity || '专注学习' }}</span>
               <div class="details">
                 <span class="duration">{{ formatDuration(item.durationSeconds) }}</span>
+                <!-- ****** 这里是修改后的时间格式 ****** -->
                 <span class="timestamp" :title="formatTimestamp(item.startTime, 'yyyy-MM-dd HH:mm')">
-                   ({{ formatTimestamp(item.startTime, 'HH:mm') }} - {{ formatTimestamp(item.endTime, 'HH:mm') }})
+                   ({{ formatTimestamp(item.startTime, 'yyyy年MM月dd日 HH:mm') }} - {{ formatTimestamp(item.endTime, 'HH:mm') }})
                 </span>
+                <!-- ************************************* -->
               </div>
             </li>
           </ul>
@@ -77,50 +79,105 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+// 导入 Vue 相关函数和 Pinia/工具函数
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useStudyLogStore } from '@/stores/studyLogStore.js';
+import { useAppStore } from '@/stores/appStore.js'; // <<< 导入 appStore
+import config from '@/config.js'; // <<< 导入 config
 import { formatDuration, formatTimestamp } from '@/utils/formatters.js';
 
-// Store
+// --- Store 实例和状态 ---
 const studyLogStore = useStudyLogStore();
 const {
   logs,
-  isLoading, // Combined loading state
-  // error, // General error (can use specific ones below)
-  logError,  // Specific error for log operations
-  statsError,// Specific error for stats loading
-  // Use state refs directly for stats as getters were removed/simplified
+  isLoading,
+  logError,
+  statsError,
   totalDurationSeconds,
   todayDurationSeconds,
   weekDurationSeconds,
   monthDurationSeconds,
-  todayOnlineSeconds // Get today's online time state
+  todayOnlineSeconds // <<< 后端持久化的今日在线总秒数 (基础值)
 } = storeToRefs(studyLogStore);
 
-// Local State
-const clearError = ref(null); // Error specific to the clear action
+const appStore = useAppStore(); // <<< 获取 appStore 实例
 
-// Methods
+// --- 本地状态：用于实时计时器 ---
+const secondsSinceStatsUpdate = ref(0); // 本地计时器：自上次 stats 更新后增加的秒数
+const localTimerId = ref(null); // 存储本地 setInterval 的 ID
+const clearError = ref(null); // 清空日志时的错误状态
+
+// --- 计算属性：用于最终显示的时长 ---
+// 计算最终显示的总在线秒数 = 后端基础值 + 本地增量
+const displayedOnlineSeconds = computed(() => {
+  // 确保基础值有效，否则视为 0
+  const baseSeconds = Number(todayOnlineSeconds.value) || 0;
+  return baseSeconds + secondsSinceStatsUpdate.value;
+});
+
+// --- 方法 ---
+// 清空日志处理函数
 async function clearLogsHandler() {
   clearError.value = null;
   if (confirm('确定要清空所有学习记录吗？此操作无法撤销。')) {
     const success = await studyLogStore.clearAllLogs();
     if (!success) {
-      // Use the specific logError if available
       clearError.value = studyLogStore.logError || '清空日志失败。';
     } else {
       alert('学习记录已清空！');
+      // 清空成功后，本地计数器也应重置 (因为 todayOnlineSeconds 也会变为 0)
+      secondsSinceStatsUpdate.value = 0;
     }
   }
 }
 
-// formatDuration and formatTimestamp are available in the template via imports
+// --- 生命周期钩子 ---
+onMounted(() => {
+  // 组件挂载时，启动本地计时器
+  if (localTimerId.value) {
+    clearInterval(localTimerId.value); // 清除可能存在的旧计时器
+  }
+
+  localTimerId.value = setInterval(() => {
+    // 每秒钟检查一次用户是否活跃
+    const now = Date.now();
+    // 直接访问 appStore 实例的响应式数据来获取最新的 lastActivityTimestamp
+    // 需要确保 appStore 已经被初始化 (在 App.vue 中 startOnlineTracking 被调用)
+    const lastActivity = appStore.persistentActivityData?.lastActivityTimestamp || now;
+
+    // 使用 config.js 中的非活跃超时时间判断 (默认为 15 分钟)
+    if (now - lastActivity <= config.INACTIVITY_TIMEOUT_MS) {
+      // 如果用户活跃，本地计时器加 1 秒
+      secondsSinceStatsUpdate.value++;
+    }
+    // 如果不活跃，则不增加秒数
+  }, 1000); // 每 1 秒执行一次
+});
+
+onUnmounted(() => {
+  // 组件卸载时，清除本地计时器，防止内存泄漏
+  if (localTimerId.value) {
+    clearInterval(localTimerId.value);
+    localTimerId.value = null;
+  }
+});
+
+// --- 监听器 ---
+// 监听 studyLogStore 中来自后端的 todayOnlineSeconds (基础值) 的变化
+watch(todayOnlineSeconds, (newValue, oldValue) => {
+  // 当基础值从后端更新时 (通常意味着 loadActivityStats 被调用了)
+  // 且新旧值不同时，重置本地的增量计时器
+  if (newValue !== oldValue) {
+    console.log(`[StudyLogSection] Backend todayOnlineSeconds updated from ${oldValue} to ${newValue}. Resetting local counter.`);
+    secondsSinceStatsUpdate.value = 0;
+  }
+});
+
 </script>
 
 <style scoped>
 /* Styles remain the same as the previous optimized version */
-/* ... Paste the full CSS from the previous response here ... */
 .study-log-page-container {}
 .study-log-content-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
 .section-header h1 i.icon-gradient { background: var(--gradient-study); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -131,10 +188,10 @@ async function clearLogsHandler() {
 .stat-item { background-color: #f8faff; padding: 1rem 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
 .stat-label { display: block; font-size: 0.85em; color: var(--text-light); margin-bottom: 0.5rem; font-weight: 500; }
 .stat-value { display: block; font-size: 1.5rem; font-weight: 700; color: var(--study-color); }
-.today-online-stat { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border-color); text-align: center; font-size: 0.95em; color: var(--text-light); }
+.today-online-stat { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border-color); text-align: center; font-size: 0.95em; color: var(--text-light); display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;} /* Added flex for better alignment */
 .today-online-stat i { margin-right: 0.5em; color: var(--info-color); }
 .today-online-stat strong { color: var(--text-color); font-weight: 600; }
-.today-online-stat .tooltip { display: block; font-size: 0.8em; font-style: italic; margin-top: 0.3em; }
+.today-online-stat .tooltip { display: inline-block; font-size: 0.8em; font-style: italic; margin-top: 0.3em; cursor: default; } /* Use inline-block for better flow */
 .study-log-list-card { border-left: 4px solid var(--secondary-color); }
 .study-log-list-card h2 i.icon-gradient-secondary { background: var(--gradient-info); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .study-log-container { margin-top: 1rem; max-height: 450px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0; background-color: #fff; }

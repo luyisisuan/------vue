@@ -80,15 +80,16 @@
           <div class="knowledge-item" v-for="item in filteredItems" :key="item.id" :data-id="item.id">
             <div class="knowledge-item-header">
                <div>
+                  <!-- **警告:** highlightText 不再清理 HTML，v-html 可能不安全 -->
                   <h3 v-html="highlightText(item.title, searchTerm)"></h3>
                  <span class="category">{{ item.category }}</span>
                </div>
                <span class="timestamp">添加于: {{ formatTimestamp(item.timestamp) }}</span>
             </div>
             <div class="knowledge-item-body">
+                <!-- **警告:** highlightText 不再清理 HTML，v-html 可能不安全 -->
                 <div class="content-text" v-html="highlightText(item.content, searchTerm)"></div>
               <p v-if="item.externalLink"><strong>链接:</strong> <a :href="item.externalLink" target="_blank" class="external-link"><i class="fas fa-external-link-alt"></i> {{ item.externalLink }}</a></p>
-              <!-- **MODIFIED:** 显示文件链接 -->
               <p v-if="item.linkedFile">
                   <strong>文件:</strong>
                   <a :href="getFileDownloadUrl(item.linkedFile)" target="_blank" class="file-link">
@@ -98,10 +99,10 @@
             </div>
             <div v-if="item.tags && item.tags.length > 0" class="knowledge-item-tags">
               <strong>标签:</strong>
+               <!-- **警告:** highlightText 不再清理 HTML，v-html 可能不安全 -->
                <span v-for="tag in item.tags" :key="tag" class="tag" v-html="highlightText(tag, searchTerm)"></span>
             </div>
             <div class="knowledge-item-footer">
-               <!-- 时间戳移到 header 了 -->
               <div class="actions">
                 <button @click="deleteItemHandler(item.id)" class="btn btn-danger btn-small delete-knowledge-btn"><i class="fas fa-trash"></i> 删除</button>
               </div>
@@ -119,7 +120,7 @@ import { storeToRefs } from 'pinia';
 import { useKnowledgeStore } from '@/stores/knowledgeStore.js';
 import config from '@/config.js';
 import { formatTimestamp } from '@/utils/formatters.js';
-import sanitizeHtml from 'sanitize-html';
+// import sanitizeHtml from 'sanitize-html'; // <<< 注释掉 import
 import { debounce } from 'lodash-es';
 
 // --- Store ---
@@ -128,10 +129,10 @@ const {
   filteredItems,
   isLoading,
   error,
-  isAdding,       // 添加过程状态
-  isUploading,    // 上传状态
-  addErrorState,  // 添加特定错误
-  uploadError,    // 上传特定错误
+  isAdding,
+  isUploading,
+  addErrorState,
+  uploadError,
   availableCategories,
   itemCount
 } = storeToRefs(knowledgeStore);
@@ -141,10 +142,10 @@ const filterCategory = ref('all');
 const searchTerm = ref('');
 const newItemForm = reactive({
   title: '', category: '', content: '',
-  tags: [], externalLink: '', linkedFile: null // Store filename here if needed by backend on create
+  tags: [], externalLink: '', linkedFile: null
 });
-const newTagsInput = ref(''); // For comma-separated input
-const selectedItemFileObject = ref(null); // Store the File object for upload
+const newTagsInput = ref('');
+const selectedItemFileObject = ref(null);
 
 // --- Constants ---
 const FILE_DOWNLOAD_BASE_URL = 'http://localhost:8080/api/files/download';
@@ -153,11 +154,9 @@ const FILE_DOWNLOAD_BASE_URL = 'http://localhost:8080/api/files/download';
 function handleItemFileChange(event) {
   const file = event.target.files?.[0];
   selectedItemFileObject.value = file || null;
-  // newItemForm.linkedFile = file ? file.name : null; // Update if needed
 }
 
 async function submitNewItem() {
-  // Basic validation
   if (!newItemForm.category) { alert('请选择分类！'); return; }
   if (!newItemForm.title || !newItemForm.content) { alert('请填写标题和内容！'); return; }
 
@@ -168,14 +167,13 @@ async function submitNewItem() {
     category: newItemForm.category,
     content: newItemForm.content,
     tags: tagsArray,
-    externalLink: newItemForm.externalLink || null, // Ensure null if empty
-    linkedFile: selectedItemFileObject.value?.name // Send original filename if backend needs it? Check backend logic.
+    externalLink: newItemForm.externalLink || null,
+    linkedFile: selectedItemFileObject.value?.name
   };
 
   const success = await knowledgeStore.addItem(itemData, selectedItemFileObject.value);
 
   if (success) {
-    // Reset form
     newItemForm.title = ''; newItemForm.category = ''; newItemForm.content = '';
     newItemForm.tags = []; newItemForm.externalLink = ''; newItemForm.linkedFile = null;
     newTagsInput.value = '';
@@ -191,7 +189,6 @@ async function submitNewItem() {
 function clearKnowledgeFilter() {
   filterCategory.value = 'all';
   searchTerm.value = '';
-  // Watcher will trigger loadItems
 }
 
 async function deleteItemHandler(itemId) {
@@ -205,45 +202,66 @@ async function deleteItemHandler(itemId) {
   }
 }
 
-// Text highlighting function (keep as before, using sanitize-html)
+// --- 修改后的高亮函数 (不再使用 sanitizeHtml) ---
+// **重要警告:** 此函数不再进行 HTML 清理。如果 text 或 term 来自不可信来源，
+//             直接使用 v-html 渲染结果可能导致 XSS 攻击。
 function highlightText(text, term) {
-    if (!term || !text) {
-        return sanitizeHtml(text || '', { allowedTags: [], allowedAttributes: {} });
+    // 确保 text 是字符串，处理 null 或 undefined
+    const textString = String(text || '');
+    if (!term) {
+        // 如果没有搜索词，仍然需要对原始文本进行基础的 HTML 转义，
+        // 防止内容中原本的 HTML 被错误渲染。
+        // 使用简单的 DOM 方法进行转义是一种选择，比引入库轻量。
+        const div = document.createElement('div');
+        div.textContent = textString;
+        return div.innerHTML; // 返回转义后的 HTML 字符串
+        // return textString; // 如果确定内容绝不会包含 '<', '>', '&' 等，可以直接返回
     }
-    const safeText = sanitizeHtml(text, { allowedTags: [], allowedAttributes: {} });
-    const safeTerm = sanitizeHtml(term, { allowedTags: [], allowedAttributes: {} });
-    if (!safeTerm) return safeText;
+
+    // 转义搜索词中的正则表达式特殊字符
+    const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!escapedTerm) return textString; // 如果转义后搜索词为空，则不进行高亮
+
     try {
-        const escapedTerm = safeTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const regex = new RegExp(`(${escapedTerm})`, 'gi');
-        // **MODIFIED:** Apply mark class for easier styling via :deep
-        return safeText.replace(regex, '<mark class="highlight">$1</mark>');
+        // 直接在原始文本上进行替换
+        // **再次警告:** 这里的 textString 可能包含 HTML，替换后用 v-html 渲染可能不安全
+        // Vue 的 v-html 不会再次转义替换后的内容
+        const highlighted = textString.replace(regex, '<mark class="highlight">$1</mark>');
+        return highlighted;
+
     } catch (e) {
-        console.error("Error highlighting text:", e);
-        return safeText;
+        console.error("高亮文本时出错:", e);
+        // 出错时返回经过基础转义的原文本
+        const div = document.createElement('div');
+        div.textContent = textString;
+        return div.innerHTML;
+        // return textString;
     }
 }
 
-// Get file download URL (same as ErrorLogSection)
+
+// 获取文件下载 URL
 function getFileDownloadUrl(fileIdentifier) {
     if (!fileIdentifier) return '#';
     const identifier = fileIdentifier.startsWith('/') ? fileIdentifier.substring(1) : fileIdentifier;
     return `${FILE_DOWNLOAD_BASE_URL}/${identifier}`;
 }
 
-// Get filename from identifier (same as ErrorLogSection)
+// 从标识符获取文件名
 function getFilenameFromIdentifier(fileIdentifier) {
     if (!fileIdentifier) return '';
     const lastSlashIndex = Math.max(fileIdentifier.lastIndexOf('/'), fileIdentifier.lastIndexOf('\\'));
     return lastSlashIndex >= 0 ? fileIdentifier.substring(lastSlashIndex + 1) : fileIdentifier;
 }
 
-// Debounced function for loading items on filter/search change
+// 用于筛选/搜索变化的防抖加载函数
 const debouncedLoadItems = debounce(() => {
     knowledgeStore.loadItems(filterCategory.value, searchTerm.value);
-}, 500);
+}, 500); // 延迟 500ms 执行
 
 // --- Watchers ---
+// 监听筛选分类和搜索词的变化，触发防抖加载
 watch([filterCategory, searchTerm], () => {
     debouncedLoadItems();
 });
@@ -251,11 +269,11 @@ watch([filterCategory, searchTerm], () => {
 </script>
 
 <style scoped>
-/* --- Knowledge Base Specific Styles --- */
+/* --- 知识库特定样式 --- */
 .knowledge-add-card { border-left: 4px solid var(--info-color); }
 .knowledge-list-card { border-left: 4px solid var(--secondary-color); }
 
-/* Filter/Search Controls */
+/* 筛选/搜索控件 */
 .knowledge-controls { margin-bottom: 1.5rem; padding: 1rem; background-color: #f8f9fa; border-radius: 8px; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; border: 1px solid var(--border-color); }
 .control-group { display: flex; align-items: center; gap: 0.5rem; }
 .knowledge-controls label { font-weight: 500; font-size: 0.9em; color: var(--text-light); white-space: nowrap; }
@@ -264,7 +282,7 @@ watch([filterCategory, searchTerm], () => {
 .knowledge-controls input[type="search"] { min-width: 200px; }
 .knowledge-controls button { margin-left: auto; }
 
-/* Form Grid/Group (Assume global or define needed) */
+/* 表单网格/组 */
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem 1.5rem; }
 .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
 .form-group.full-width { grid-column: 1 / -1; }
@@ -278,43 +296,50 @@ watch([filterCategory, searchTerm], () => {
 .selected-file-info { display: inline-block; margin-left: 10px; font-size: 0.85em; color: var(--text-light); font-style: italic; }
 
 
-/* Knowledge List */
+/* 知识列表 */
 .knowledge-base-container { margin-top: 1rem; display: grid; gap: 1rem; }
 .knowledge-item { background-color: #fff; border: 1px solid var(--border-color); border-left: 4px solid var(--info-color); border-radius: 8px; padding: 1rem 1.5rem; box-shadow: var(--shadow-light); transition: var(--transition-default); display: flex; flex-direction: column; }
 .knowledge-item:hover { box-shadow: var(--shadow-medium); transform: translateY(-2px); }
 .knowledge-item-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 0.5rem; }
 .knowledge-item-header > div:first-child { flex-grow: 1; }
 .knowledge-item-header h3 { font-size: 1.1rem; margin-bottom: 0.2rem; color: var(--info-color); word-break: break-word; display: inline-block; margin-right: 0.5em; }
-.knowledge-item-header h3 :deep(mark.highlight) { background-color: yellow; padding: 0; color: inherit; border-radius: 2px;} /* Style highlight */
+/* **新增:** 高亮文本样式 (使用 :deep 选择器穿透 scoped) */
+.knowledge-item :deep(mark.highlight) {
+    background-color: yellow; /* 或其他醒目的颜色 */
+    color: black; /* 确保文本可读 */
+    padding: 0.1em 0.2em; /* 轻微内边距 */
+    margin: 0 -0.2em; /* 抵消内边距影响布局 */
+    border-radius: 3px; /* 轻微圆角 */
+    font-weight: inherit; /* 保持原有粗细 */
+}
 .knowledge-item-header .category { font-size: 0.8em; font-weight: 500; color: var(--text-light); background-color: #f0f4f8; padding: 0.1em 0.5em; border-radius: 4px; white-space: nowrap; display: inline-block; vertical-align: middle; }
 .knowledge-item-header .timestamp { font-size: 0.8em; color: var(--text-light); white-space: nowrap; flex-shrink: 0; }
 .knowledge-item-body { font-size: 0.95rem; line-height: 1.6; margin-bottom: 1rem; flex-grow: 1; }
-.knowledge-item-body .content-text { white-space: pre-wrap; word-wrap: break-word; margin-bottom: 0.8rem; }
-.knowledge-item-body .content-text :deep(mark.highlight) { background-color: yellow; padding: 0; color: inherit; border-radius: 2px;} /* Style highlight */
+.knowledge-item-body .content-text { white-space: pre-wrap; /* 保留换行和空格 */ word-wrap: break-word; margin-bottom: 0.8rem; }
 .knowledge-item-body p { margin-bottom: 0.4rem; word-wrap: break-word; }
 .knowledge-item-body strong { font-weight: 600; color: var(--primary-dark); margin-right: 0.5em; }
 .external-link { color: var(--primary-color); font-size: 0.9em; word-break: break-all; text-decoration: underline; }
 .external-link i { margin-right: 0.3em; }
 .file-link { font-size: 0.9em; color: var(--primary-color); display: inline-flex; align-items: center; gap: 0.3em; word-break: break-all; text-decoration: underline; cursor: pointer; }
 .file-link:hover { color: var(--primary-dark); }
-.file-link i { font-size: 1em; margin-right: 0; /* Use gap */ }
+.file-link i { font-size: 1em; } /* 移除右边距，使用 gap */
 .knowledge-item-tags { margin-bottom: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
-.knowledge-item-tags strong { margin-bottom: 0; }
+.knowledge-item-tags strong { margin-bottom: 0; margin-right: 0.5em; /* 标签标题和标签间距 */ }
 .tag { background-color: var(--secondary-color); color: white; padding: 0.2em 0.6em; border-radius: 10px; font-size: 0.75em; font-weight: 500; cursor: default; transition: background-color var(--transition-speed) ease; }
-.tag :deep(mark.highlight) { background-color: navy; color: yellow; padding: 0; border-radius: 2px;} /* Style highlight */
-.knowledge-item-footer { margin-top: auto; padding-top: 0.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; }
+/* .tag :deep(mark.highlight) { ... } */ /* 高亮样式已在父级 .knowledge-item 定义 */
+.knowledge-item-footer { margin-top: auto; /* 将页脚推到底部 */ padding-top: 0.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; }
 .knowledge-item-footer .actions { display: flex; gap: 0.5rem; }
 
-/* Loading/Error/Placeholder */
+/* 加载/错误/占位符 */
 .loading-indicator, .error-message { text-align: center; padding: 1rem; color: var(--text-light); }
 .error-message { color: var(--danger-color); }
 .placeholder-text-small, .placeholder-text { color: var(--text-light); text-align: center; padding: 2rem; font-style: italic; }
 .placeholder-text-small { padding: 1rem 0; font-size: 0.9em; }
 
-/* Header icon */
+/* 头部图标 */
 .section-header i.icon-gradient { background: var(--gradient-info); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
-/* Responsive */
+/* 响应式设计 */
 @media (max-width: 768px) {
     .filter-controls { flex-direction: column; align-items: stretch; gap: 0.8rem; }
     .filter-controls select, .filter-controls input[type="search"] { width: 100%; min-width: unset; }
