@@ -73,7 +73,7 @@
     <div class="sidebar-footer">
       <span id="current-time">{{ currentTime }}</span>
       <!-- 直接显示注入的在线时长 -->
-      <span id="online-time-display" class="footer-stat">在线: {{ injectedOnlineTime }}</span>
+      <!-- <span id="online-time-display" class="footer-stat">在线: {{ injectedOnlineTime }}</span> -->
       <p>©2253864680@qq.com|段绪程</p>
     </div>
   </aside>
