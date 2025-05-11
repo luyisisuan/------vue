@@ -1,7 +1,11 @@
 <template>
   <div>
     <header class="section-header">
-      <h1><i class="fas fa-link icon-gradient"></i> 资源库</h1>
+      <!-- 
+        1. 使用你选择的 Font Awesome 图标 (fas fa-database)。
+        2. 移除了 icon-gradient-info 类，让图标使用其默认颜色或被全局/局部CSS定义的颜色。
+      -->
+      <h1><i class="fas fa-database"></i> 资源库</h1>
       <p>常用的学习网站和资料链接。</p>
       <div class="actions">
         <button @click="showAddModal = true" class="btn btn-primary">
@@ -10,10 +14,10 @@
       </div>
     </header>
 
-    <!-- 资源分类标签 -->
+
     <div class="category-tabs">
-      <button 
-        v-for="cat in ['全部', ...store.categories]" 
+      <button
+        v-for="cat in ['全部', ...store.categories]"
         :key="cat"
         @click="currentCategory = cat"
         :class="['category-tab', currentCategory === cat ? 'active' : '']">
@@ -41,12 +45,12 @@
         <p>{{ currentCategory === '全部' ? '暂无资源' : `暂无${currentCategory}分类的资源` }}</p>
       </div>
       <div v-else class="resource-grid">
-        <div 
-          v-for="resource in filteredResources" 
-          :key="resource.id" 
+        <div
+          v-for="resource in filteredResources"
+          :key="resource.id"
           class="resource-item-container">
           <a :href="resource.url" target="_blank" class="resource-item">
-            <i :class="resource.icon || 'fas fa-link'"></i>
+            <i :class="resource.icon || 'fas fa-link'"></i> <!-- 列表中的图标保持不变，用户可以自定义 -->
             <span>{{ resource.title }}</span>
             <small v-if="resource.description" class="resource-description">{{ resource.description }}</small>
           </a>
@@ -75,31 +79,31 @@
           <form @submit.prevent="saveResource">
             <div class="form-group">
               <label for="title">标题 <span class="required">*</span></label>
-              <input 
-                type="text" 
-                id="title" 
-                v-model="resourceForm.title" 
-                required 
+              <input
+                type="text"
+                id="title"
+                v-model="resourceForm.title"
+                required
                 placeholder="输入资源标题"
               />
             </div>
             <div class="form-group">
               <label for="url">链接 <span class="required">*</span></label>
-              <input 
-                type="url" 
-                id="url" 
-                v-model="resourceForm.url" 
-                required 
+              <input
+                type="url"
+                id="url"
+                v-model="resourceForm.url"
+                required
                 placeholder="输入资源链接 (https://...)"
               />
             </div>
             <div class="form-group">
               <label for="icon">图标</label>
               <div class="icon-selector">
-                <input 
-                  type="text" 
-                  id="icon" 
-                  v-model="resourceForm.icon" 
+                <input
+                  type="text"
+                  id="icon"
+                  v-model="resourceForm.icon"
                   placeholder="FontAwesome 图标类名 (如: fas fa-book)"
                 />
                 <div class="icon-preview">
@@ -117,9 +121,9 @@
             </div>
             <div class="form-group">
               <label for="description">描述</label>
-              <textarea 
-                id="description" 
-                v-model="resourceForm.description" 
+              <textarea
+                id="description"
+                v-model="resourceForm.description"
                 placeholder="输入资源简短描述 (可选)"
                 rows="2"
               ></textarea>
@@ -280,6 +284,9 @@ function resetForm() {
   border-left: 4px solid var(--success-color);
 }
 
+.section-header h1 > i.fas.fa-database{
+  color: #3498db; 
+}
 .resource-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));

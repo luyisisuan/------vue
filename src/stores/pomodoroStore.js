@@ -1,37 +1,45 @@
+// src/stores/pomodoroStore.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import axios from 'axios';
+import apiClient from '@/utils/apiClient.js';
 import { format } from 'date-fns';
-import config from '@/config.js';
-import { useStudyLogStore } from './studyLogStore';
-
-const API_SETTINGS_URL = 'http://localhost:8080/api/pomodoro/settings';
-const API_LOG_URL = 'http://localhost:8080/api/pomodoro/log';
+import config from '@/config.js'; // 用于获取默认设置和常量
+import { useStudyLogStore } from './studyLogStore'; // 用于记录学习日志
 
 function getTodayDateString() {
   return format(new Date(), 'yyyy-MM-dd');
 }
 
 export const usePomodoroStore = defineStore('pomodoro', () => {
-  // State
-  const workDuration = ref(25);
-  const shortBreakDuration = ref(5);
-  const longBreakDuration = ref(15);
+  // --- State ---
+  const defaultWork = config?.pomodoroDefaults?.workDuration || 25;
+  const defaultShort = config?.pomodoroDefaults?.shortBreakDuration || 5;
+  const defaultLong = config?.pomodoroDefaults?.longBreakDuration || 15;
+
+  const workDuration = ref(defaultWork);
+  const shortBreakDuration = ref(defaultShort);
+  const longBreakDuration = ref(defaultLong);
+
   const settingsLoading = ref(false);
   const settingsError = ref(null);
+
   const currentMode = ref('work');
   const isTimerRunning = ref(false);
-  const timerSecondsRemaining = ref((workDuration.value || 25) * 60);
+  const timerSecondsRemaining = ref(workDuration.value * 60);
   const timerIntervalId = ref(null);
   const workCyclesCompleted = ref(0);
+
   const currentSessionStartTime = ref(null);
   const currentSessionActivity = ref('');
-  const logLoading = ref(false);
-  const logError = ref(null);
-  const pomodorosToday = ref(0);
-  const lastPomodoroDate = ref(localStorage.getItem('dxcGwyLastPomodoroDate') || '');
 
-  // Getters
+  // 从 pomodoroStore 角度看，这两个是记录 studyLog 的状态
+  const isLoggingToStudyLog = ref(false); // 新增：标记是否正在调用 studyLogStore.addLog
+  const studyLoggingError = ref(null); // 新增：存储调用 studyLogStore.addLog 相关的错误
+
+  const pomodorosToday = ref(0);
+  const lastPomodoroDate = ref('');
+
+  // --- Getters ---
   const timerTotalSeconds = computed(() => {
       let durationMinutes;
       switch (currentMode.value) {
@@ -39,14 +47,14 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
           case 'longBreak': durationMinutes = longBreakDuration.value; break;
           default: durationMinutes = workDuration.value; break;
       }
-      const validMinutes = Number.isInteger(durationMinutes) && durationMinutes >= 1
+      const validMinutes = Number.isFinite(durationMinutes) && durationMinutes >= 1
                            ? durationMinutes
-                           : (currentMode.value === 'shortBreak' ? 5 : (currentMode.value === 'longBreak' ? 15 : 25));
+                           : (currentMode.value === 'shortBreak' ? defaultShort : (currentMode.value === 'longBreak' ? defaultLong : defaultWork));
       return validMinutes * 60;
   });
 
   const formattedTime = computed(() => {
-      const seconds = Math.max(0, typeof timerSecondsRemaining.value === 'number' ? timerSecondsRemaining.value : timerTotalSeconds.value);
+      const seconds = Math.max(0, Number.isFinite(timerSecondsRemaining.value) ? timerSecondsRemaining.value : timerTotalSeconds.value);
       const mins = Math.floor(seconds / 60);
       const secs = seconds % 60;
       return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
@@ -57,7 +65,7 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
       return modeMap[currentMode.value] || '工作';
   });
 
-  // Actions: 内部定时器逻辑
+  // --- Actions: 内部定时器逻辑 ---
   function tick() {
     if (!isTimerRunning.value) return;
     timerSecondsRemaining.value--;
@@ -67,9 +75,11 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     }
   }
 
-  async function handleTimerEndInternal() { // 改为 async 以便记录日志
-    clearInterval(timerIntervalId.value);
-    timerIntervalId.value = null;
+  async function handleTimerEndInternal() {
+    if (timerIntervalId.value) {
+        clearInterval(timerIntervalId.value);
+        timerIntervalId.value = null;
+    }
     isTimerRunning.value = false;
     timerSecondsRemaining.value = 0;
 
@@ -81,22 +91,37 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
              const endTime = new Date();
              const startTime = new Date(currentSessionStartTime.value);
              const duration = Math.round((endTime.getTime() - startTime.getTime()) / 1000);
+
              if (duration >= 60) {
                  incrementPomodorosToday();
-                 await addStudyLogInternal({
-                     startTime: startTime.toISOString(), 
+                 console.log('[PomodoroStore] Attempting to log study session...');
+                 const logSuccess = await addStudyLogInternal({
+                     startTime: startTime.toISOString(),
                      endTime: endTime.toISOString(),
-                     durationSeconds: duration, 
-                     activity: currentSessionActivity.value.trim() || '专注学习', 
+                     durationSeconds: duration,
+                     activity: currentSessionActivity.value.trim() || '专注学习',
                      source: 'pomodoro'
                  });
+                 if (logSuccess) {
+                    console.log('[PomodoroStore] Study session successfully logged via studyLogStore.');
+                 } else {
+                    console.warn('[PomodoroStore] Failed to log study session. Error:', studyLoggingError.value);
+                    // UI 可以观察 studyLoggingError 来显示提示
+                 }
+             } else {
+                 console.log(`[PomodoroStore] Work session duration (${duration}s) too short, not logged or counted.`);
              }
          }
+         currentSessionStartTime.value = null; // 重置，即使未记录
+         currentSessionActivity.value = ''; // 清空活动输入
          workCyclesCompleted.value++;
          const longBreakInterval = config?.pomodoroDefaults?.longBreakInterval || 4;
          nextMode = (workCyclesCompleted.value % longBreakInterval === 0) ? 'longBreak' : 'shortBreak';
     } else {
          nextMode = 'work';
+         if (previousMode === 'longBreak') {
+             workCyclesCompleted.value = 0;
+         }
     }
     switchModeInternal(nextMode);
   }
@@ -104,47 +129,54 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
   function switchModeInternal(newMode) {
     currentMode.value = newMode;
     timerSecondsRemaining.value = timerTotalSeconds.value;
-    currentSessionStartTime.value = (newMode === 'work') ? new Date().toISOString() : null;
-    workCyclesCompleted.value = (newMode === 'longBreak') ? 0 : workCyclesCompleted.value;
+    if (newMode === 'work') {
+        currentSessionStartTime.value = new Date().toISOString();
+    } else {
+        currentSessionStartTime.value = null;
+    }
     document.title = `${modeText.value} | ${formattedTime.value} - 备考舱`;
-    console.log(`Switched mode to: ${newMode}. Total seconds: ${timerTotalSeconds.value}`);
+    console.log(`[PomodoroStore] Switched mode to: ${newMode}. Timer set to ${timerTotalSeconds.value} seconds.`);
   }
 
   function resetTimerInternal(silent = false) {
-    clearInterval(timerIntervalId.value);
+    if (timerIntervalId.value) clearInterval(timerIntervalId.value);
     timerIntervalId.value = null;
     isTimerRunning.value = false;
     currentMode.value = 'work';
     workCyclesCompleted.value = 0;
-    timerSecondsRemaining.value = (workDuration.value || 25) * 60;
+    timerSecondsRemaining.value = workDuration.value * 60;
     currentSessionStartTime.value = null;
-    currentSessionActivity.value = '';
+    currentSessionActivity.value = ''; // 重置时清空活动
+    studyLoggingError.value = null; // 清除可能存在的旧日志记录错误
     if (!silent) {
-      console.log("Timer reset in store.");
+      console.log("[PomodoroStore] Timer reset.");
       document.title = "备考智能驾驶舱 | 段绪程";
     } else {
-      timerSecondsRemaining.value = timerTotalSeconds.value;
       document.title = `${modeText.value} | ${formattedTime.value} - 备考舱`;
     }
   }
 
-  // Actions: 对组件公开的接口
+  // --- Actions: 对组件公开的接口 ---
   async function loadSettings() {
     settingsLoading.value = true;
     settingsError.value = null;
     try {
-      const response = await axios.get(API_SETTINGS_URL);
+      const response = await apiClient.get('/pomodoro/settings');
       const data = response.data;
-      workDuration.value = data.workDuration || 25;
-      shortBreakDuration.value = data.shortBreakDuration || 5;
-      longBreakDuration.value = data.longBreakDuration || 15;
+      workDuration.value = data.workDuration || defaultWork;
+      shortBreakDuration.value = data.shortBreakDuration || defaultShort;
+      longBreakDuration.value = data.longBreakDuration || defaultLong;
       if (!isTimerRunning.value) {
           resetTimerInternal(true);
       }
-      console.log('Pomodoro settings loaded.');
+      console.log('[PomodoroStore] Settings loaded.');
     } catch (err) {
-      settingsError.value = '无法加载设置。';
-      console.error('Error loading settings:', err);
+      settingsError.value = '无法加载番茄钟设置。';
+      console.error('[PomodoroStore] Error loading pomodoro settings:', err);
+      workDuration.value = defaultWork;
+      shortBreakDuration.value = defaultShort;
+      longBreakDuration.value = defaultLong;
+      if (!isTimerRunning.value) resetTimerInternal(true);
     } finally {
       settingsLoading.value = false;
     }
@@ -154,71 +186,85 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     settingsLoading.value = true;
     settingsError.value = null;
     const validUpdates = {};
-    if (updates.workDuration >= 1) validUpdates.workDuration = updates.workDuration;
-    if (updates.shortBreakDuration >= 1) validUpdates.shortBreakDuration = updates.shortBreakDuration;
-    if (updates.longBreakDuration >= 1) validUpdates.longBreakDuration = updates.longBreakDuration;
-    if (Object.keys(validUpdates).length === 0) { 
-      settingsLoading.value = false; 
-      return false; 
+    if (Number.isFinite(updates.workDuration) && updates.workDuration >= 1) validUpdates.workDuration = updates.workDuration;
+    if (Number.isFinite(updates.shortBreakDuration) && updates.shortBreakDuration >= 1) validUpdates.shortBreakDuration = updates.shortBreakDuration;
+    if (Number.isFinite(updates.longBreakDuration) && updates.longBreakDuration >= 1) validUpdates.longBreakDuration = updates.longBreakDuration;
+
+    if (Object.keys(validUpdates).length === 0) {
+      console.warn("[PomodoroStore] No valid settings provided for update.");
+      settingsLoading.value = false;
+      settingsError.value = "提供的设置无效。"; // 给用户一些反馈
+      return false;
     }
 
     try {
-      const response = await axios.patch(API_SETTINGS_URL, validUpdates);
+      const response = await apiClient.patch('/pomodoro/settings', validUpdates);
       const data = response.data;
       workDuration.value = data.workDuration;
       shortBreakDuration.value = data.shortBreakDuration;
       longBreakDuration.value = data.longBreakDuration;
-      // 当番茄钟未运行时，实时刷新界面（静默模式重置定时器）
       if (!isTimerRunning.value) {
         resetTimerInternal(true);
       }
-      console.log('Pomodoro settings updated.');
+      console.log('[PomodoroStore] Settings updated.');
       return true;
     } catch (err) {
-      settingsError.value = `更新设置失败: ${err.response?.data?.message || err.message}`;
-      console.error('Error updating settings:', err);
+      const backendError = err.response?.data?.message || err.message || '未知错误';
+      settingsError.value = `更新设置失败: ${backendError}`;
+      console.error('[PomodoroStore] Error updating pomodoro settings:', err);
       return false;
     } finally {
       settingsLoading.value = false;
     }
   }
 
-  // 日志记录函数
   async function addStudyLogInternal(logData) {
-    const studyLogStore = useStudyLogStore();
-    if (!studyLogStore) { return false; }
-    logLoading.value = true;
-    logError.value = null;
+    const studyLogStore = useStudyLogStore(); // 获取实例
+    if (!studyLogStore) {
+        console.error("[PomodoroStore] Cannot get studyLogStore instance.");
+        studyLoggingError.value = '无法访问学习日志模块。'; // 使用 studyLoggingError
+        return false;
+    }
+    isLoggingToStudyLog.value = true; // 标记开始记录
+    studyLoggingError.value = null; // 清除旧错误
     try {
       const success = await studyLogStore.addLog(logData);
-      logError.value = studyLogStore.error;
+      // addLog 内部会设置 studyLogStore.logError，我们这里只关心成功与否
+      // 如果需要更具体的错误，可以从 studyLogStore.logError 获取，但 addLog 的返回值已足够
+      if (!success) {
+        studyLoggingError.value = studyLogStore.logError || '学习日志记录未成功。';
+      }
       return success;
     } catch (err) {
-      logError.value = '记录日志时发生意外错误。';
+      // 这个 catch 主要捕获 studyLogStore.addLog() 本身抛出的意外错误
+      console.error('[PomodoroStore] Unexpected error calling studyLogStore.addLog:', err);
+      studyLoggingError.value = '记录日志时发生意外错误。';
       return false;
     } finally {
-      logLoading.value = false;
+      isLoggingToStudyLog.value = false; // 标记结束记录
     }
   }
 
   function checkAndResetPomodoroCount() {
     const today = getTodayDateString();
-    if (lastPomodoroDate.value !== today) {
+    const storedDate = localStorage.getItem('dxcGwyLastPomodoroDate');
+    if (storedDate !== today) {
       pomodorosToday.value = 0;
       lastPomodoroDate.value = today;
       localStorage.setItem('dxcGwyLastPomodoroDate', today);
-    }
-    const savedCount = parseInt(localStorage.getItem('dxcGwyPomodorosToday') || '0', 10);
-    if (lastPomodoroDate.value === today && pomodorosToday.value !== savedCount) {
-      pomodorosToday.value = savedCount;
+      localStorage.setItem('dxcGwyPomodorosToday', '0');
+      console.log("[PomodoroStore] New day detected, pomodoro count reset.");
+    } else {
+      pomodorosToday.value = parseInt(localStorage.getItem('dxcGwyPomodorosToday') || '0', 10);
+      lastPomodoroDate.value = today;
     }
   }
-  
+
   function incrementPomodorosToday() {
-    checkAndResetPomodoroCount();
+    checkAndResetPomodoroCount(); // 确保日期是最新的
     pomodorosToday.value++;
     localStorage.setItem('dxcGwyPomodorosToday', pomodorosToday.value.toString());
-    console.log(`Pomodoros today: ${pomodorosToday.value}`);
+    console.log(`[PomodoroStore] Pomodoros completed today: ${pomodorosToday.value}`);
   }
 
   function startTimer() {
@@ -232,16 +278,16 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     isTimerRunning.value = true;
     if (timerIntervalId.value) clearInterval(timerIntervalId.value);
     timerIntervalId.value = setInterval(tick, 1000);
-    console.log("Timer started.");
+    console.log(`[PomodoroStore] Timer started in ${currentMode.value} mode.`);
     document.title = `${modeText.value} | ${formattedTime.value} - 备考舱`;
   }
 
   function pauseTimer() {
     if (!isTimerRunning.value) return;
-    clearInterval(timerIntervalId.value);
+    if (timerIntervalId.value) clearInterval(timerIntervalId.value);
     timerIntervalId.value = null;
     isTimerRunning.value = false;
-    console.log("Timer paused.");
+    console.log("[PomodoroStore] Timer paused.");
     document.title = `暂停 | ${modeText.value} | ${formattedTime.value} - 备考舱`;
   }
 
@@ -249,35 +295,44 @@ export const usePomodoroStore = defineStore('pomodoro', () => {
     resetTimerInternal(false);
   }
 
-  // 更新当前活动
   function updateCurrentActivity(activity) {
     currentSessionActivity.value = activity;
   }
 
-  // 定时器清理
-  function cleanupTimer() {
-    clearInterval(timerIntervalId.value);
-    timerIntervalId.value = null;
-    console.log("Pomodoro timer interval cleaned up.");
+  function cleanupTimer() { // 通常在组件 onUnmounted 时调用
+    if (timerIntervalId.value) {
+      clearInterval(timerIntervalId.value);
+      timerIntervalId.value = null;
+      console.log("[PomodoroStore] Timer interval cleaned up.");
+    }
+    // 根据需求，可以在这里保存当前状态，例如如果计时器正在运行且是工作模式
+  }
+  
+  // --- Initialization Action ---
+  async function initializeStore() {
+    console.log('[PomodoroStore] Initializing...');
+    await loadSettings();
+    checkAndResetPomodoroCount();
+    console.log('[PomodoroStore] Initialization complete.');
   }
 
-  // 初始化
-  loadSettings();
-  checkAndResetPomodoroCount();
-
-  // 将所有需要暴露给组件的方法、属性添加进返回对象中
+  // --- Expose ---
   return {
     workDuration, shortBreakDuration, longBreakDuration,
     settingsLoading, settingsError,
-    currentMode, isTimerRunning, timerSecondsRemaining, timerTotalSeconds,
+    currentMode, isTimerRunning, timerSecondsRemaining,
     currentSessionActivity,
-    formattedTime, modeText,
+    isLoggingToStudyLog, // 暴露给UI，例如显示“记录中...”
+    studyLoggingError, // 暴露给UI，显示记录日志时的错误
+    pomodorosToday,
+
+    timerTotalSeconds, formattedTime, modeText,
+
+    loadSettings,
+    updateSettings,
     startTimer, pauseTimer, resetTimer,
-    updateSettings,    // 确保 updateSettings 暴露出来
-    addStudyLog: addStudyLogInternal,
-    logLoading, logError,
-    pomodorosToday, incrementPomodorosToday,
     updateCurrentActivity,
-    cleanupTimer
+    cleanupTimer,
+    initializeStore // 暴露初始化方法
   };
-})
+});

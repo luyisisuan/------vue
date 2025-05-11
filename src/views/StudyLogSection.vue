@@ -1,4 +1,3 @@
-<!-- src/views/StudyLogSection.vue -->
 <template>
   <div class="study-log-page-container">
     <header class="section-header">
@@ -37,19 +36,18 @@
           </div>
         </div>
         <!-- 今日在线时长 -->
-         <div class="today-online-stat">
-             <i class="fas fa-desktop"></i>
-             今日在线活跃时长: <strong>{{ formatDuration(displayedOnlineSeconds) }}</strong>
-             <span class="tooltip">根据页面活跃时间记录，与专注学习时长分开统计。</span>
-         </div>
+        <div class="today-online-stat">
+            <i class="fas fa-desktop"></i>
+            今日在线活跃时长: <strong>{{ formatDuration(displayedOnlineSeconds) }}</strong>
+            <span class="tooltip">根据页面活跃时间记录，与专注学习时长分开统计。</span>
+        </div>
       </div>
 
       <!-- 日志列表卡片 -->
       <div class="card study-log-list-card">
         <h2><i class="fas fa-history icon-gradient-secondary"></i> 最近学习记录 (来自番茄钟)</h2>
         <div id="study-log-list" class="study-log-container">
-           <!-- 列表区域也检查加载和错误状态 -->
-          <div v-if="isLoading" class="loading-indicator small-indicator">加载日志列表...</div>
+          <div v-if="isLoadingLogs" class="loading-indicator small-indicator">加载日志列表...</div>
           <div v-else-if="logError" class="error-message small-error">加载日志失败: {{ logError }}</div>
           <p v-else-if="logs.length === 0" class="placeholder-text">暂无学习记录。</p>
           <ul v-else class="study-log-list-ul">
@@ -57,11 +55,9 @@
               <span class="activity">{{ item.activity || '专注学习' }}</span>
               <div class="details">
                 <span class="duration">{{ formatDuration(item.durationSeconds) }}</span>
-                <!-- ****** 这里是修改后的时间格式 ****** -->
                 <span class="timestamp" :title="formatTimestamp(item.startTime, 'yyyy-MM-dd HH:mm')">
-                   ({{ formatTimestamp(item.startTime, 'yyyy年MM月dd日 HH:mm') }} - {{ formatTimestamp(item.endTime, 'HH:mm') }})
+                  ({{ formatTimestamp(item.startTime, 'yyyy年MM月dd日 HH:mm') }} - {{ formatTimestamp(item.endTime, 'HH:mm') }})
                 </span>
-                <!-- ************************************* -->
               </div>
             </li>
           </ul>
@@ -73,107 +69,205 @@
           <span v-if="clearError" class="error-message small">{{ clearError }}</span>
         </div>
       </div>
-
     </div>
   </div>
 </template>
-
 <script setup>
-// 导入 Vue 相关函数和 Pinia/工具函数
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useStudyLogStore } from '@/stores/studyLogStore.js';
-import { useAppStore } from '@/stores/appStore.js'; // <<< 导入 appStore
-import config from '@/config.js'; // <<< 导入 config
+import { useAppStore } from '@/stores/appStore.js';
+import config from '@/config.js';
 import { formatDuration, formatTimestamp } from '@/utils/formatters.js';
 
 // --- Store 实例和状态 ---
 const studyLogStore = useStudyLogStore();
 const {
   logs,
-  isLoading,
   logError,
   statsError,
   totalDurationSeconds,
   todayDurationSeconds,
   weekDurationSeconds,
   monthDurationSeconds,
-  todayOnlineSeconds // <<< 后端持久化的今日在线总秒数 (基础值)
+  todayOnlineSeconds, // 后端持久化的今日在线总秒数 (基础值)
+  isLoadingLogs,
+  isLoadingStats
 } = storeToRefs(studyLogStore);
 
-const appStore = useAppStore(); // <<< 获取 appStore 实例
+const isLoading = computed(() => studyLogStore.isLoading); // isLoading is a computed in store
+const appStore = useAppStore();
+
+// --- localStorage Keys (revised for clarity and date handling) ---
+// Added _v2 to keys to avoid potential conflicts if old keys are still in user's localStorage
+const LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT = 'gwy_today_online_increment_v2';
+const LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE = 'gwy_today_increment_last_update_v2';
+const LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE = 'gwy_today_increment_date_v2'; // Stores YYYY-MM-DD
 
 // --- 本地状态：用于实时计时器 ---
-const secondsSinceStatsUpdate = ref(0); // 本地计时器：自上次 stats 更新后增加的秒数
-const localTimerId = ref(null); // 存储本地 setInterval 的 ID
-const clearError = ref(null); // 清空日志时的错误状态
+const secondsSinceStatsUpdate = ref(0); // 本地增量计时器
+const localTimerId = ref(null);
+const clearError = ref(null);
 
 // --- 计算属性：用于最终显示的时长 ---
-// 计算最终显示的总在线秒数 = 后端基础值 + 本地增量
 const displayedOnlineSeconds = computed(() => {
-  // 确保基础值有效，否则视为 0
   const baseSeconds = Number(todayOnlineSeconds.value) || 0;
-  return baseSeconds + secondsSinceStatsUpdate.value;
+  const incrementSeconds = Number(secondsSinceStatsUpdate.value) || 0;
+  return baseSeconds + incrementSeconds;
 });
 
+// Helper to get current date as YYYY-MM-DD string
+function getCurrentDateString() {
+  return new Date().toISOString().split('T')[0];
+}
+
 // --- 方法 ---
-// 清空日志处理函数
 async function clearLogsHandler() {
   clearError.value = null;
   if (confirm('确定要清空所有学习记录吗？此操作无法撤销。')) {
     const success = await studyLogStore.clearAllLogs();
     if (!success) {
-      clearError.value = studyLogStore.logError || '清空日志失败。';
+      clearError.value = studyLogStore.logError || studyLogStore.statsError || '清空日志失败。';
     } else {
       alert('学习记录已清空！');
-      // 清空成功后，本地计数器也应重置 (因为 todayOnlineSeconds 也会变为 0)
       secondsSinceStatsUpdate.value = 0;
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE);
+      // Date key can remain, as it will be for "today" with 0 increment.
     }
   }
 }
 
 // --- 生命周期钩子 ---
-onMounted(() => {
-  // 组件挂载时，启动本地计时器
-  if (localTimerId.value) {
-    clearInterval(localTimerId.value); // 清除可能存在的旧计时器
+onMounted(async () => { // Make onMounted async for store actions
+  // --- 1. Restore Local Online Time Increment (Today's Increment) ---
+  const currentDateStr = getCurrentDateString();
+  const storedDateStr = localStorage.getItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE);
+
+  if (storedDateStr === currentDateStr) {
+    // It's today, try to load the increment
+    const storedIncrementString = localStorage.getItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT);
+    if (storedIncrementString !== null) {
+      const storedIncrement = parseInt(storedIncrementString, 10);
+      if (!isNaN(storedIncrement) && storedIncrement >= 0) {
+        secondsSinceStatsUpdate.value = storedIncrement;
+        console.log(`[StudyLogSection] Loaded 'today' increment from localStorage: ${storedIncrement}s for date ${currentDateStr}`);
+      } else {
+        // Invalid stored number, treat as 0
+        secondsSinceStatsUpdate.value = 0;
+        localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT); // Clean up
+      }
+    } else {
+      // No increment stored for today, start from 0
+      secondsSinceStatsUpdate.value = 0;
+    }
+  } else {
+    // Stored data is not for today (or no date stored), reset everything for today
+    console.log('[StudyLogSection] No valid increment for today in localStorage, or date mismatch. Starting from 0.');
+    secondsSinceStatsUpdate.value = 0;
+    localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE);
+    // Set the date to today for future saves
+    localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE, currentDateStr);
+  }
+
+  // --- 2. Fetch Study Log Stats and Logs from Store ---
+  // Ensures data is loaded/updated when component mounts.
+  // These calls should ideally be idempotent in your store or handled by store's own logic
+  // (e.g., not re-fetching if data is fresh or already loading).
+  try {
+    if (!studyLogStore.isLoadingStats) { // Avoid re-fetching if already in progress by store
+        // Heuristic: if totalDurationSeconds is undefined, it likely hasn't been loaded.
+        // Adjust this condition based on your store's default state for these values.
+        if (typeof studyLogStore.totalDurationSeconds === 'undefined' && !studyLogStore.statsError) {
+            console.log('[StudyLogSection] Attempting to load activity stats from studyLogStore.');
+            await studyLogStore.loadActivityStats(); // ASSUMPTION: this action exists in your store
+        }
+    }
+    if (!studyLogStore.isLoadingLogs) { // Avoid re-fetching if already in progress
+        if (studyLogStore.logs.length === 0 && !studyLogStore.logError) { // Heuristic: no logs and no error
+            console.log('[StudyLogSection] Attempting to load logs from studyLogStore.');
+            await studyLogStore.loadLogs(); // ASSUMPTION: this action exists in your store
+        }
+    }
+  } catch (e) {
+      console.error("[StudyLogSection] Error during initial data load from store:", e);
+      // Handle store loading errors if necessary, though store itself should set its error state
+  }
+
+
+  // --- 3. Start Local Timer for Online Time ---
+  if (localTimerId.value) { // Clear any existing timer
+    clearInterval(localTimerId.value);
   }
 
   localTimerId.value = setInterval(() => {
-    // 每秒钟检查一次用户是否活跃
-    const now = Date.now();
-    // 直接访问 appStore 实例的响应式数据来获取最新的 lastActivityTimestamp
-    // 需要确保 appStore 已经被初始化 (在 App.vue 中 startOnlineTracking 被调用)
-    const lastActivity = appStore.persistentActivityData?.lastActivityTimestamp || now;
+    const currentTime = Date.now();
+    const timerCurrentDateStr = new Date(currentTime).toISOString().split('T')[0];
+    const lsDateStr = localStorage.getItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE);
 
-    // 使用 config.js 中的非活跃超时时间判断 (默认为 15 分钟)
-    if (now - lastActivity <= config.INACTIVITY_TIMEOUT_MS) {
-      // 如果用户活跃，本地计时器加 1 秒
-      secondsSinceStatsUpdate.value++;
+    // Check if the day has changed while the timer is running
+    if (timerCurrentDateStr !== lsDateStr) {
+      console.log('[StudyLogSection] Day changed. Resetting online increment for new day.');
+      secondsSinceStatsUpdate.value = 0; // Reset for the new day
+      localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE, timerCurrentDateStr);
+      // Clear old day's increment and last update, new ones will be set below if active
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE);
     }
-    // 如果不活跃，则不增加秒数
-  }, 1000); // 每 1 秒执行一次
+
+    const lastActivity = appStore.persistentActivityData?.lastActivityTimestamp || currentTime;
+    const inactivityTimeout = config.INACTIVITY_TIMEOUT_MS || 15 * 60 * 1000; // 15 minutes default
+
+    if (currentTime - lastActivity <= inactivityTimeout) {
+      secondsSinceStatsUpdate.value++;
+      // Update localStorage periodically (e.g., every 5 seconds)
+      if (secondsSinceStatsUpdate.value % 5 === 0) {
+        localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT, secondsSinceStatsUpdate.value.toString());
+        localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE, currentTime.toString());
+        // Ensure date is also current (important if day changed)
+        localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE, timerCurrentDateStr);
+      }
+    }
+  }, 1000);
 });
 
 onUnmounted(() => {
-  // 组件卸载时，清除本地计时器，防止内存泄漏
   if (localTimerId.value) {
     clearInterval(localTimerId.value);
     localTimerId.value = null;
   }
-});
-
-// --- 监听器 ---
-// 监听 studyLogStore 中来自后端的 todayOnlineSeconds (基础值) 的变化
-watch(todayOnlineSeconds, (newValue, oldValue) => {
-  // 当基础值从后端更新时 (通常意味着 loadActivityStats 被调用了)
-  // 且新旧值不同时，重置本地的增量计时器
-  if (newValue !== oldValue) {
-    console.log(`[StudyLogSection] Backend todayOnlineSeconds updated from ${oldValue} to ${newValue}. Resetting local counter.`);
-    secondsSinceStatsUpdate.value = 0;
+  // Save current increment to localStorage on unmount
+  if (typeof secondsSinceStatsUpdate.value === 'number' && secondsSinceStatsUpdate.value >= 0) {
+    const currentDateStr = getCurrentDateString();
+    localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT, secondsSinceStatsUpdate.value.toString());
+    localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE, Date.now().toString());
+    localStorage.setItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE, currentDateStr); // Ensure date is saved
+    console.log(`[StudyLogSection] Unmounted. Saved increment to localStorage: ${secondsSinceStatsUpdate.value}s for date ${currentDateStr}`);
+  } else {
+    // If value is invalid for some reason, clear related keys for today to prevent loading bad data next time
+    const currentDateStr = getCurrentDateString();
+    const storedDateStr = localStorage.getItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE);
+    if (storedDateStr === currentDateStr) { // Only clear if it's for today's invalid data
+        localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE);
+    }
   }
 });
 
+// --- 监听器 ---
+watch(todayOnlineSeconds, (newValue, oldValue) => {
+  // React if the value actually changed from its previous state in the store.
+  if (newValue !== oldValue) {
+    console.log(`[StudyLogSection] Backend 'todayOnlineSeconds' updated from ${oldValue} to ${newValue}. Resetting local counter.`);
+    secondsSinceStatsUpdate.value = 0;
+    // The local increment is now "stale" as it's based on the old backend base value.
+    // Clear localStorage increment for today. The timer will repopulate it starting from 0.
+    // The date key (LOCAL_STORAGE_KEY_TODAY_INCREMENT_DATE) should remain, as it's still today.
+    localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_ONLINE_INCREMENT);
+    localStorage.removeItem(LOCAL_STORAGE_KEY_TODAY_INCREMENT_LAST_UPDATE);
+  }
+}, { immediate: false }); // immediate: false is generally correct here.
 </script>
 
 <style scoped>
@@ -188,10 +282,10 @@ watch(todayOnlineSeconds, (newValue, oldValue) => {
 .stat-item { background-color: #f8faff; padding: 1rem 0.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
 .stat-label { display: block; font-size: 0.85em; color: var(--text-light); margin-bottom: 0.5rem; font-weight: 500; }
 .stat-value { display: block; font-size: 1.5rem; font-weight: 700; color: var(--study-color); }
-.today-online-stat { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border-color); text-align: center; font-size: 0.95em; color: var(--text-light); display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;} /* Added flex for better alignment */
+.today-online-stat { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--border-color); text-align: center; font-size: 0.95em; color: var(--text-light); display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;}
 .today-online-stat i { margin-right: 0.5em; color: var(--info-color); }
 .today-online-stat strong { color: var(--text-color); font-weight: 600; }
-.today-online-stat .tooltip { display: inline-block; font-size: 0.8em; font-style: italic; margin-top: 0.3em; cursor: default; } /* Use inline-block for better flow */
+.today-online-stat .tooltip { display: inline-block; font-size: 0.8em; font-style: italic; margin-top: 0.3em; cursor: default; }
 .study-log-list-card { border-left: 4px solid var(--secondary-color); }
 .study-log-list-card h2 i.icon-gradient-secondary { background: var(--gradient-info); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .study-log-container { margin-top: 1rem; max-height: 450px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 8px; padding: 0; background-color: #fff; }

@@ -1,54 +1,55 @@
 // src/stores/knowledgeStore.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import axios from 'axios';
-import config from '@/config.js'; // 可能需要 config 获取预定义分类
+// <<< 导入 apiClient >>>
+import apiClient from '@/utils/apiClient.js';
+// import axios from 'axios'; // <<< 移除或注释掉
 
-const API_BASE_URL = 'http://localhost:8080/api/knowledge';
-// **新增:** 文件上传 API URL (与 errorLogStore 共用)
-const API_FILE_UPLOAD_URL = 'http://localhost:8080/api/files/upload';
+import config from '@/config.js'; // 保留用于获取分类
+
+// <<< 不再需要 API_BASE_URL 和 API_FILE_UPLOAD_URL 常量 >>>
+// const API_BASE_URL = 'http://localhost:8080/api/knowledge';
+// const API_FILE_UPLOAD_URL = 'http://localhost:8080/api/files/upload';
 
 export const useKnowledgeStore = defineStore('knowledgeBase', () => {
   // --- State ---
   const items = ref([]);
-  const isLoading = ref(false);
-  const error = ref(null);
+  const isLoading = ref(false); // 列表加载状态
+  const error = ref(null);      // 通用错误状态
   const currentFilterCategory = ref(null);
   const currentSearchTerm = ref('');
-  // **新增:** 文件上传状态
-  const isUploading = ref(false);
-  const uploadError = ref(null);
-  // **新增:** 添加操作状态
-  const isAdding = ref(false);
-  const addErrorState = ref(null);
-
+  const isAdding = ref(false);      // 添加操作状态 (包括可能的文件上传)
+  const isUploading = ref(false);   // 文件上传子状态
+  const addErrorState = ref(null);  // 添加操作特定错误
+  const uploadError = ref(null);    // 上传特定错误 (冗余，可以用 addErrorState 区分)
 
   // --- Getters ---
   const filteredItems = computed(() => items.value);
 
   const availableCategories = computed(() => {
-      const categoriesFromItems = new Set(items.value.map(item => item.category));
-      const allPossibleCategories = [...new Set([...(config?.knowledgeBaseCategories || []), ...categoriesFromItems])];
-      return ['all', ...allPossibleCategories.sort()];
+      const categoriesFromItems = new Set(items.value.map(item => item.category).filter(Boolean));
+      const predefinedCategories = config.knowledgeBaseCategories || [];
+      const allCategories = [...new Set([...predefinedCategories, ...categoriesFromItems])];
+      return ['all', ...allCategories.sort()];
   });
 
   const itemCount = computed(() => items.value.length);
 
   // --- Actions ---
   async function loadItems(category = null, searchTerm = '') {
-    // ... (保持之前的加载逻辑不变, 确保 finally 设置 isLoading = false) ...
      currentFilterCategory.value = category;
      currentSearchTerm.value = searchTerm;
      isLoading.value = true;
      error.value = null;
-     addErrorState.value = null; // 清除之前的添加错误
-     uploadError.value = null; // 清除之前的上传错误
+     addErrorState.value = null;
+     uploadError.value = null;
      const params = {};
      if (category && category !== 'all') { params.category = category; }
      if (typeof searchTerm === 'string' && searchTerm.trim()) { params.search = searchTerm.trim(); }
 
      try {
-       const response = await axios.get(API_BASE_URL, { params });
+       // <<< 使用 apiClient 和相对路径 /knowledge >>>
+       const response = await apiClient.get('/knowledge', { params });
         if (Array.isArray(response.data)) {
             items.value = response.data;
             console.log(`Loaded ${items.value.length} knowledge items from API.`);
@@ -67,112 +68,101 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
      }
   }
 
-  /**
-   * 添加新的知识库条目，并可选地上传关联文件。
-   * @param {object} itemData 包含知识信息的对象 (不含 ID, timestamp, file object)
-   * @param {File | null} fileToUpload 要上传的文件对象，或 null
-   * @returns {Promise<boolean>} 操作是否完全成功
-   */
+  // **保持原有 addItem 逻辑，但使用 apiClient**
   async function addItem(itemData, fileToUpload = null) {
-    isAdding.value = true; // 标记整个添加过程开始
+    isAdding.value = true;
     isUploading.value = false;
     error.value = null;
     addErrorState.value = null;
     uploadError.value = null;
 
-    let createdItem = null; // 保存创建后的实体
+    let createdItem = null;
     let success = false;
 
     try {
-        // 1. 验证基本数据
-         if (!itemData || !itemData.title || !itemData.category || !itemData.content) {
-             throw new Error('请填写标题、分类和内容！'); // 直接抛出错误
-         }
+        if (!itemData || !itemData.title || !itemData.category || !itemData.content) {
+            throw new Error('请填写标题、分类和内容！');
+        }
 
-        // 2. 先创建知识条目实体
-        const dataToSend = {
-           ...itemData,
-           tags: itemData.tags || [], // 确保 tags 是数组
-           // linkedFile 可以先不传或传原始文件名，后续上传成功再更新
-        };
+        const dataToSend = { ...itemData, tags: itemData.tags || [] };
         delete dataToSend.id;
         delete dataToSend.timestamp;
+        // 在创建时不发送 linkedFile，或者发送原始文件名（取决于后端处理方式）
+        // dataToSend.linkedFile = null; // 或保留原始文件名： itemData.linkedFile
 
-        const response = await axios.post(API_BASE_URL, dataToSend);
+        // <<< 使用 apiClient 和相对路径 /knowledge >>>
+        const response = await apiClient.post('/knowledge', dataToSend);
         createdItem = response.data;
         console.log('Knowledge item entry created via API:', createdItem);
 
-        // 3. 如果有文件需要上传，并且实体创建成功
         if (fileToUpload && createdItem?.id) {
             console.log(`Uploading file for knowledge item ID: ${createdItem.id}`);
-            isUploading.value = true;
+            isUploading.value = true; // 标记开始上传
             const formData = new FormData();
             formData.append('file', fileToUpload);
-            formData.append('type', 'knowledge'); // <<< 类型改为 'knowledge'
+            formData.append('type', 'knowledge');
             formData.append('entityId', createdItem.id.toString());
 
-            const uploadResponse = await axios.post(API_FILE_UPLOAD_URL, formData, { /* headers */ });
+            // <<< 使用 apiClient 和相对路径 /files/upload >>>
+            const uploadResponse = await apiClient.post('/files/upload', formData);
             console.log('File uploaded successfully:', uploadResponse.data);
 
-            // 更新内存中刚创建的对象的 linkedFile 字段
             if (uploadResponse.data.fileIdentifier) {
+                // 更新刚创建的对象的 linkedFile (重要：这是内存中的对象)
                 createdItem.linkedFile = uploadResponse.data.fileIdentifier;
+                // **可选但推荐:** 可以考虑再次调用后端 API (PATCH /knowledge/{id})
+                // 将 fileIdentifier 保存到数据库对应记录中，确保数据一致性。
+                // 如果选择这样做，需要在这里添加一个 apiClient.patch 调用。
+                // 例如: await apiClient.patch(`/knowledge/${createdItem.id}`, { linkedFile: createdItem.linkedFile });
             } else {
                  console.warn("File upload API did not return a fileIdentifier.");
             }
-             isUploading.value = false;
+             isUploading.value = false; // 标记上传结束
         }
 
-        // 4. 将最终的条目添加到本地列表开头
         if (createdItem) {
-            items.value.unshift(createdItem);
+            items.value.unshift(createdItem); // 添加到列表
             console.log("Added new knowledge item to local state:", createdItem);
         }
         success = true;
 
     } catch (err) {
         console.error('Error adding knowledge item or uploading file:', err);
-        const backendError = err.response?.data || err.message || '未知错误';
-        if (isUploading.value) {
+        let backendError = '未知错误';
+        if (err.response) { backendError = err.response.data?.message || JSON.stringify(err.response.data) || err.response.statusText; }
+        else if (err.request) { backendError = '无法连接到服务器。'; }
+        else { backendError = err.message; }
+
+        if (isUploading.value) { // 根据状态判断错误来源
             uploadError.value = `文件上传失败: ${backendError}`;
-            addErrorState.value = uploadError.value; // 同时设置添加错误
+            addErrorState.value = uploadError.value;
         } else {
             addErrorState.value = `添加知识条目失败: ${backendError}`;
         }
-        error.value = addErrorState.value; // 同时设置主错误
+        error.value = addErrorState.value;
         success = false;
     } finally {
         isAdding.value = false;
-        isUploading.value = false;
+        isUploading.value = false; // 确保重置
     }
     return success;
   }
 
-
-  // 删除知识条目 (需要考虑删除关联文件 - 最佳实践在后端)
   async function deleteItem(id) {
-    isLoading.value = true; // 可以用 isLoading 或单独的 isDeleting 状态
+    isLoading.value = true; // 或 isDeleting
     error.value = null;
-    addErrorState.value = null;
-    uploadError.value = null;
-    let fileIdentifierToDelete = null;
-
-    // 先找文件标识符
+    // ... (查找文件标识符逻辑不变)
     const itemToDelete = items.value.find(item => item.id === id);
-    if (itemToDelete && itemToDelete.linkedFile) {
-        fileIdentifierToDelete = itemToDelete.linkedFile;
-    }
+    const fileIdentifierToDelete = itemToDelete?.linkedFile;
 
     try {
-        await axios.delete(`${API_BASE_URL}/${id}`);
+        // <<< 使用 apiClient 和相对路径 /knowledge/{id} >>>
+        await apiClient.delete(`/knowledge/${id}`);
         console.log(`Knowledge item with id ${id} removed via API.`);
 
         if (fileIdentifierToDelete) {
              console.warn(`Associated file ${fileIdentifierToDelete} should be deleted on the server.`);
-             // 后端 Service 的 delete 方法应该处理文件删除
         }
-
-        // 从本地列表移除
         items.value = items.value.filter(item => item.id !== id);
         return true;
     } catch (err) {
@@ -181,7 +171,7 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
         error.value = `删除知识条目失败: ${backendError}`;
         return false;
     } finally {
-        isLoading.value = false;
+        isLoading.value = false; // 或 isDeleting = false
     }
   }
 
@@ -191,7 +181,7 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
   // --- Expose ---
   return {
     items, isLoading, error, currentFilterCategory, currentSearchTerm,
-    isAdding, isUploading, addErrorState, uploadError, // 暴露新状态
+    isAdding, isUploading, addErrorState, uploadError, // 暴露状态
     filteredItems, availableCategories, itemCount,
     loadItems, addItem, deleteItem,
   };

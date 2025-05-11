@@ -1,57 +1,48 @@
 // src/stores/knowledgeStore.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import axios from 'axios';
-// 移除旧导入
-// import config from '@/config.js';
-// import { loadData, saveData, generateId } from '@/utils/storage.js';
+// <<< 导入 apiClient >>>
+import apiClient from '@/utils/apiClient.js';
+// import axios from 'axios'; // <<< 移除或注释掉
 
-const API_BASE_URL = 'http://localhost:8080/api/knowledge'; // 后端 API 基础 URL
+// <<< 不再需要 API_BASE_URL 常量 >>>
+// const API_BASE_URL = 'http://localhost:8080/api/knowledge';
+
+// 导入 config 用于获取预定义分类 (如果需要)
+import config from '@/config.js';
 
 export const useKnowledgeStore = defineStore('knowledgeBase', () => {
   // --- State ---
-  const items = ref([]); // 知识条目列表
+  const items = ref([]);
   const isLoading = ref(false);
   const error = ref(null);
-  // 可以保留筛选条件在 store 中，或者让组件自己管理然后调用 loadItems
-  const currentFilterCategory = ref(null); // null or 'all' means no category filter
+  const currentFilterCategory = ref(null);
   const currentSearchTerm = ref('');
 
   // --- Getters ---
-  // Getter for filtered items (could be simplified if loadItems always fetches filtered)
-  const filteredItems = computed(() => {
-      // This getter might become simpler if loadItems always fetches the correct list
-      // based on currentFilterCategory and currentSearchTerm stored here.
-      // For now, it just returns the current items list.
-      return items.value;
-  });
+  // filteredItems getter 现在直接返回 items，因为加载逻辑已包含筛选
+  const filteredItems = computed(() => items.value);
 
-  // Getter for available categories based on current items
+  // availableCategories getter: 合并现有分类和预定义分类
   const availableCategories = computed(() => {
-      // 从 items 提取不重复的 category
-      const categories = new Set(items.value.map(item => item.category));
-      // 假设 config.knowledgeBaseCategories 包含预定义的分类
-      // import config from '@/config.js'; // 需要导入 config
-      // const allPossibleCategories = [...new Set([...config.knowledgeBaseCategories, ...categories])];
-      // return ['all', ...allPossibleCategories.sort()];
-
-      // 如果只基于现有数据生成：
-      return ['all', ...Array.from(categories).sort()];
+      const existingCategories = new Set(items.value.map(item => item.category).filter(Boolean));
+      const predefinedCategories = config.knowledgeBaseCategories || []; // 从 config 获取
+      // 合并两者并去重，然后排序
+      const allCategories = [...new Set([...predefinedCategories, ...existingCategories])];
+      return ['all', ...allCategories.sort()];
   });
 
   const itemCount = computed(() => items.value.length);
 
   // --- Actions ---
 
-  // 从后端加载知识条目，支持筛选
   async function loadItems(category = null, searchTerm = '') {
-    // 更新 store 内的筛选状态（如果需要）
     currentFilterCategory.value = category;
     currentSearchTerm.value = searchTerm;
-
     isLoading.value = true;
     error.value = null;
-    const params = {}; // 用于构建查询参数
+
+    const params = {};
     if (category && category !== 'all') {
         params.category = category;
     }
@@ -60,86 +51,129 @@ export const useKnowledgeStore = defineStore('knowledgeBase', () => {
     }
 
     try {
-      // 发送 GET 请求，附带查询参数
-      const response = await axios.get(API_BASE_URL, { params });
-      items.value = response.data; // 更新列表
+      // <<< 使用 apiClient 和相对路径 /knowledge >>>
+      const response = await apiClient.get('/knowledge', { params });
+      items.value = response.data;
       console.log(`Loaded ${items.value.length} knowledge items from API.`);
     } catch (err) {
       console.error('Error loading knowledge items from API:', err);
-      error.value = '无法加载知识库条目，请稍后重试。';
+      const backendError = err.response?.data?.message || err.message || '未知网络错误';
+      error.value = `无法加载知识库条目: ${backendError}`;
       items.value = [];
     } finally {
       isLoading.value = false;
     }
   }
 
-  // 添加新知识条目
+  // **修改:** 添加条目的 Action 现在不处理文件上传，文件上传应单独处理或在组件层调用
+  //    这个 Action 只负责创建文本数据
   async function addItem(itemData) {
-    // 基本验证
     if (!itemData || !itemData.title || !itemData.category || !itemData.content) {
         error.value = '请填写标题、分类和内容！';
         console.warn('Incomplete knowledge item data for adding.');
-        return false; // 返回 false 表示添加失败
+        return null; // 返回 null 表示失败
     }
-    isLoading.value = true;
+    isLoading.value = true; // 可以考虑使用 isAdding 状态
     error.value = null;
     try {
-       // 准备发送的数据 (确保 tags 是数组)
        const dataToSend = {
            ...itemData,
-           tags: itemData.tags || [], // 确保 tags 是数组
+           tags: itemData.tags || [],
+           // 确保不发送 file 对象，文件上传是单独的步骤
+           linkedFile: null // 或根据后端是否需要文件名决定是否发送 itemData.linkedFile
        };
-       delete dataToSend.id; // 后端生成 ID
-       delete dataToSend.timestamp; // 后端生成时间戳
+       delete dataToSend.id;
+       delete dataToSend.timestamp;
 
-      const response = await axios.post(API_BASE_URL, dataToSend);
-      // 添加成功后，将新条目加到列表开头 (或重新加载列表)
-      items.value.unshift(response.data);
-      console.log('Knowledge item added via API:', response.data);
-       // 清除之前的错误信息
-       error.value = null;
-       return true; // 返回 true 表示添加成功
+      // <<< 使用 apiClient 和相对路径 /knowledge >>>
+      const response = await apiClient.post('/knowledge', dataToSend);
+      const newItem = response.data; // 后端返回创建的完整条目 (不含文件信息)
+      items.value.unshift(newItem);
+      console.log('Knowledge item added via API (without file):', newItem);
+      error.value = null;
+      return newItem; // 返回创建的条目数据，用于后续文件关联
+
     } catch (err) {
       console.error('Error adding knowledge item via API:', err);
-      error.value = '添加知识条目失败，请稍后重试。';
-      return false; // 返回 false 表示添加失败
+      const backendError = err.response?.data?.message || err.message || '添加知识条目失败，请稍后重试。';
+      error.value = backendError;
+      return null; // 返回 null 表示失败
     } finally {
-      isLoading.value = false;
+      isLoading.value = false; // isAdding = false;
     }
   }
 
-  // 删除知识条目
+  // **新增:** 单独的文件上传 Action (如果需要 store 管理)
+  //   或者这个逻辑可以完全放在组件的 submit 方法中
+  async function uploadKnowledgeFile(itemId, file) {
+      if (!itemId || !file) {
+          console.error("Upload function requires itemId and file.");
+          return null; // 返回 null 或抛出错误
+      }
+      // 可以设置 isUploading 状态
+      error.value = null; // 清除旧错误
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'knowledge'); // 指定文件类型
+      formData.append('entityId', itemId.toString()); // 关联的实体 ID
+
+      try {
+          // <<< 使用 apiClient 和相对路径 /files/upload >>>
+          const response = await apiClient.post('/files/upload', formData);
+          const fileIdentifier = response.data.fileIdentifier;
+          console.log(`File uploaded for knowledge item ${itemId}, identifier: ${fileIdentifier}`);
+
+          // 更新本地对应 item 的 linkedFile 字段
+          const index = items.value.findIndex(item => item.id === itemId);
+          if (index !== -1) {
+              items.value[index].linkedFile = fileIdentifier;
+          } else {
+               console.warn(`Uploaded file for item ${itemId}, but item not found locally.`);
+               // 可以考虑重新加载单个 item 或整个列表
+          }
+          return fileIdentifier; // 返回文件标识符
+
+      } catch (err) {
+           console.error(`Error uploading file for knowledge item ${itemId}:`, err);
+           const backendError = err.response?.data?.message || err.message || '文件上传失败';
+           error.value = backendError; // 设置错误状态
+           return null; // 返回 null 表示上传失败
+      } finally {
+           // isUploading = false;
+      }
+  }
+
+
   async function deleteItem(id) {
-    isLoading.value = true;
+    // isLoading.value = true; // 可以考虑使用 isDeleting 状态
     error.value = null;
     try {
-      await axios.delete(`${API_BASE_URL}/${id}`);
+      // <<< 使用 apiClient 和相对路径 /knowledge/{id} >>>
+      await apiClient.delete(`/knowledge/${id}`);
       items.value = items.value.filter(item => item.id !== id);
       console.log(`Knowledge item with id ${id} removed via API.`);
+      return true; // 返回 true 表示成功
     } catch (err) {
       console.error('Error removing knowledge item via API:', err);
-      error.value = '删除知识条目失败，请稍后重试。';
+      const backendError = err.response?.data?.message || err.message || '删除知识条目失败，请稍后重试。';
+      error.value = backendError;
+      return false; // 返回 false 表示失败
     } finally {
-      isLoading.value = false;
+      // isLoading.value = false; // isDeleting = false;
     }
   }
 
   // --- Initialization ---
-  // 初始化时加载所有条目
   loadItems();
 
   // --- Expose ---
   return {
-    items,
-    isLoading,
-    error,
-    currentFilterCategory, // 如果组件需要直接修改筛选条件
-    currentSearchTerm,    // 同上
-    filteredItems,      // 暴露过滤后的列表 (目前直接等于 items)
-    availableCategories, // 暴露可用分类
-    itemCount,
-    loadItems,        // 暴露以便组件可以触发加载/筛选
-    addItem,
+    items, isLoading, error, currentFilterCategory, currentSearchTerm,
+    filteredItems, availableCategories, itemCount,
+    loadItems,
+    addItem, // 暴露修改后的 addItem
+    uploadKnowledgeFile, // 暴露文件上传 action
     deleteItem,
+    // 暴露 isAdding, isUploading, isDeleting 等状态如果添加了
   };
 });

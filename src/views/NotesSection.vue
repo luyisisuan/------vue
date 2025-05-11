@@ -21,7 +21,7 @@
             <textarea
               id="notes-general-creator"
               class="notes-textarea editing"
-              placeholder="在此处输入新的笔记内容... (支持基础HTML标签，如 <b>, <i>, <br>)"
+              placeholder="在此处输入新的笔记内容... )"
               v-model="newNoteContent"
               rows="8"
               :disabled="isCreating"
