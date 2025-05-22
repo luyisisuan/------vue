@@ -1,7 +1,16 @@
 <!-- src/App.vue -->
 <template>
-  <div class="app-container">
-    <Sidebar />
+  <!-- 
+    根据 appStore 中的 isSidebarHidden 和 isSidebarCollapsed 状态动态添加类名
+    - sidebar-hidden-app: 当侧边栏完全隐藏时
+    - sidebar-collapsed-app: 当侧边栏收起但未隐藏时
+  -->
+  <div :class="['app-container', { 
+    'sidebar-collapsed-app': appStore.isSidebarCollapsed && !appStore.isSidebarHidden, 
+    'sidebar-hidden-app': appStore.isSidebarHidden 
+  }]">
+    <!-- 仅当 isSidebarHidden 为 false 时渲染 Sidebar 组件 -->
+    <Sidebar v-if="!appStore.isSidebarHidden" />
     <main class="main-content">
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
@@ -14,8 +23,8 @@
 
 <script setup>
 import Sidebar from './components/Sidebar.vue';
-import { RouterView } from 'vue-router';
-import { provide, onMounted, onUnmounted, computed } from 'vue';
+import { RouterView, useRoute } from 'vue-router'; // 移除了 useRouter，因为这里不用它
+import { provide, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useAppStore } from '@/stores/appStore.js';
 import { useStudyLogStore } from '@/stores/studyLogStore.js';
 import { usePomodoroStore } from '@/stores/pomodoroStore.js';
@@ -24,11 +33,11 @@ import { storeToRefs } from 'pinia';
 const appStore = useAppStore();
 const studyLogStore = useStudyLogStore();
 const pomodoroStore = usePomodoroStore();
+const route = useRoute(); // 获取当前路由对象
 
-// 从 studyLogStore 获取在线时长数据 (用于显示，与番茄钟学习时长是分开的)
+// 从 studyLogStore 获取在线时长数据
 const { todayOnlineSeconds } = storeToRefs(studyLogStore);
 
-// 创建格式化的在线时长计算属性
 const formattedOnlineTime = computed(() => {
   const seconds = Number(todayOnlineSeconds.value) || 0;
   const hours = Math.floor(seconds / 3600);
@@ -37,68 +46,103 @@ const formattedOnlineTime = computed(() => {
   return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 });
 
-// 在组件挂载时初始化各个 store
+// 监听路由变化以更新侧边栏状态
+watch(
+  () => route.meta, // 监听路由的 meta 对象
+  (newMeta) => {
+    const behavior = newMeta?.sidebarBehavior; // 使用可选链操作符
+
+    if (behavior === 'collapsed') {
+      appStore.setSidebarHidden(false); // 确保不是隐藏状态
+      appStore.setSidebarCollapsed(true);
+    } else if (behavior === 'expanded') {
+      appStore.setSidebarHidden(false); // 确保不是隐藏状态
+      appStore.setSidebarCollapsed(false);
+    } else if (behavior === 'hidden') {
+      appStore.setSidebarHidden(true);
+      // 当隐藏时，isSidebarCollapsed 也会被 appStore.setSidebarHidden(true) 设为 true
+    } else {
+      // 默认行为：如果路由没有定义 sidebarBehavior，则展开
+      appStore.setSidebarHidden(false);
+      appStore.setSidebarCollapsed(false);
+    }
+  },
+  { immediate: true, deep: true } // immediate: 初始加载时执行, deep: 如果meta是复杂对象可能需要
+);
+
+
 onMounted(async () => {
   console.log('App component mounted. Initializing stores...');
-
-  // 1. 初始化 App Store (负责应用级别的状态，如在线时长跟踪)
   appStore.startOnlineTracking();
-
-  // 2. 并行初始化其他核心 stores
-  // 使用 Promise.all 确保它们都完成后再继续（如果需要），或至少都开始初始化
   try {
     await Promise.all([
-      studyLogStore.initializeStore(), // 负责学习日志和统计
-      pomodoroStore.initializeStore()  // 负责番茄钟逻辑和设置
-      // 如果还有其他应用启动时需要初始化的 store，也在这里调用它们的初始化方法
+      studyLogStore.initializeStore(),
+      pomodoroStore.initializeStore()
     ]);
     console.log('Core stores (StudyLog, Pomodoro) initialized successfully.');
   } catch (error) {
     console.error('Error during core store initialization in App.vue:', error);
-    // 这里可以添加一些全局错误处理逻辑，例如向用户显示一个通用的初始化失败消息
   }
-  
   console.log('App.vue onMounted: All initialization tasks queued/completed.');
 });
 
 onUnmounted(() => {
   console.log('App component unmounted.');
-  // 停止 App Store 的在线跟踪
   appStore.stopOnlineTracking();
-
-  // 各个 store 内部的 onUnmounted 钩子（如果有，例如 studyLogStore 中的 stopStatsPolling）
-  // 会在 store 不再被使用时执行清理。
-  // 如果 pomodoroStore 有需要在应用级别卸载时执行的特定清理 (如 cleanupTimer)，
-  // 且其内部 onUnmounted 不足以覆盖，可以在此调用。
-  // pomodoroStore.cleanupTimer();
 });
 
-// Provide 格式化的在线时长，如果子组件需要通过 inject 访问
 provide('onlineTimeDisplay', formattedOnlineTime);
 
 </script>
 
 <style>
 /* App.vue 的全局或布局样式 */
+:root { /* 确保这些变量在全局定义，例如在 main.css 或这里 */
+  --sidebar-width: 260px; /* 侧边栏展开时的宽度 */
+  --sidebar-width-collapsed: 70px; /* 侧边栏收起时的宽度 (仅图标) */
+  --content-padding: 1.5rem; /* 主内容区的内边距 */
+  --transition-speed: 0.3s; /* 过渡动画速度 */
+  /* 其他你可能需要的全局颜色、字体等变量 */
+  --sidebar-bg: #ffffff;
+  --border-color: #e9ecef;
+  --text-color: #212529;
+  --text-light: #6c757d;
+  --primary-color: #D90000;
+  --gradient-primary: linear-gradient(45deg, var(--primary-color), #ff5c5c);
+  --card-border-radius: 8px;
+}
+
 .app-container {
   display: flex;
   min-height: 100vh;
-  /* 根据你的 Sidebar.vue 和 main-content 的实际布局调整 */
 }
 
 .main-content {
   flex-grow: 1;
-  /* 确保 main-content 能正确处理 Sidebar 的宽度 */
-  /* 之前的 margin-left: var(--sidebar-width); 可能在 gwy-global.css 中 */
-  position: relative; /* 为了路由过渡效果 */
+  position: relative; /* 为了路由过渡 */
   overflow-y: auto; /* 如果内容过多，允许主内容区滚动 */
-  /* padding: var(--content-padding); 可能在 gwy-global.css 中 */
+  background-color: #f8f9fa; /* 主内容区背景色示例 */
+  padding: var(--content-padding); /* 上下右内边距 */
+  
+  /* 默认情况下，main-content 的左内边距适应展开的侧边栏 */
+  padding-left: calc(var(--sidebar-width) + var(--content-padding));
+  transition: padding-left var(--transition-speed) ease;
 }
 
-/* 简单的淡入淡出路由过渡效果 */
+/* 当侧边栏收起但未隐藏时，调整 main-content 的左内边距 */
+.app-container.sidebar-collapsed-app .main-content {
+  padding-left: calc(var(--sidebar-width-collapsed) + var(--content-padding));
+}
+
+/* 当侧边栏完全隐藏时，main-content 的左内边距恢复为标准内边距 */
+.app-container.sidebar-hidden-app .main-content {
+  padding-left: var(--content-padding);
+}
+
+/* 路由过渡效果 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease-in-out; /* 调整过渡时间和曲线 */
+  transition: opacity 0.2s ease-in-out;
 }
 
 .fade-enter-from,

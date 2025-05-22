@@ -2,12 +2,10 @@
 import { defineStore } from 'pinia';
 import { ref, computed, onUnmounted } from 'vue';
 import apiClient from '@/utils/apiClient.js';
-import config from '@/config.js'; // 确保 config.js 中有 STATS_POLLING_INTERVAL_MS
+import config from '@/config.js';
 
-const LOGS_API_BASE_PATH = '/pomodoro/log'; // 你的番茄钟日志API路径
-const STATS_API_PATH = '/activity/stats';   // 你的活动统计API路径
-
-// 统计数据轮询间隔 (例如：60秒)
+const LOGS_API_BASE_PATH = '/pomodoro/log';
+const STATS_API_PATH = '/activity/stats';
 const STATS_POLLING_INTERVAL_MS = config.STATS_POLLING_INTERVAL_MS || 60000;
 
 export const useStudyLogStore = defineStore('studyLog', () => {
@@ -15,17 +13,18 @@ export const useStudyLogStore = defineStore('studyLog', () => {
   const logs = ref([]);
   const isLoadingLogs = ref(false);
   const logError = ref(null);
+  const logsLoadedSuccessfully = ref(false); // New state
 
-  // 统计数据
   const totalDurationSeconds = ref(0);
   const todayDurationSeconds = ref(0);
   const weekDurationSeconds = ref(0);
   const monthDurationSeconds = ref(0);
-  const todayOnlineSeconds = ref(0); // 这个值现在会从 stats.todayOnline 更新
+  const todayOnlineSeconds = ref(0);
 
   const isLoadingStats = ref(false);
   const statsError = ref(null);
   const statsPollingIntervalId = ref(null);
+  const statsLoadedSuccessfully = ref(false); // New state
 
   // --- Getters ---
   const isLoading = computed(() => isLoadingLogs.value || isLoadingStats.value);
@@ -35,10 +34,12 @@ export const useStudyLogStore = defineStore('studyLog', () => {
   async function loadRecentLogs(limit = 50) {
     isLoadingLogs.value = true;
     logError.value = null;
+    logsLoadedSuccessfully.value = false; // Reset before loading
     try {
       const response = await apiClient.get(`${LOGS_API_BASE_PATH}/recent`, { params: { limit } });
       if (Array.isArray(response.data)) {
           logs.value = response.data;
+          logsLoadedSuccessfully.value = true; // Set on success
           console.log(`[StudyLogStore] Loaded ${logs.value.length} recent study logs.`);
       } else {
            logs.value = [];
@@ -55,34 +56,36 @@ export const useStudyLogStore = defineStore('studyLog', () => {
     }
   }
 
-  async function loadActivityStats() {
-      if (isLoadingStats.value && statsPollingIntervalId.value && isLoadingStats.value === true) {
-          console.log('[StudyLogStore] Stats loading already in progress (likely by poll), skipping this poll trigger.');
+  async function loadActivityStats(isForced = false) { // Added isForced for explicit reload needs
+      if (isLoadingStats.value && !isForced) { // Allow forced reload even if already loading
+          console.log('[StudyLogStore] Stats loading already in progress, skipping non-forced call.');
           return;
       }
       isLoadingStats.value = true;
       statsError.value = null;
+      statsLoadedSuccessfully.value = false; // Reset before loading
       try {
           const response = await apiClient.get(STATS_API_PATH);
-          const stats = response.data; // stats is: {"total":12852,"week":369,"month":369,"today":369,"todayOnline":4050}
+          const stats = response.data;
 
-          // 使用后端实际返回的字段名进行赋值
           totalDurationSeconds.value = stats.total || 0;
           weekDurationSeconds.value = stats.week || 0;
           monthDurationSeconds.value = stats.month || 0;
           todayDurationSeconds.value = stats.today || 0;
-          todayOnlineSeconds.value = stats.todayOnline || 0; // 这个现在会正确更新
+          todayOnlineSeconds.value = stats.todayOnline || 0;
+          statsLoadedSuccessfully.value = true; // Set on success
 
-          console.log("[StudyLogStore] Loaded activity stats from backend and mapped to store:", {
+          console.log("[StudyLogStore] Loaded activity stats from backend:", {
             total: totalDurationSeconds.value,
             week: weekDurationSeconds.value,
             month: monthDurationSeconds.value,
             today: todayDurationSeconds.value,
-            todayOnline: todayOnlineSeconds.value // 这个值现在是 4050
+            todayOnline: todayOnlineSeconds.value
           });
 
       } catch (err) {
           console.error("[StudyLogStore] Error loading activity stats:", err);
+          statsLoadedSuccessfully.value = false; // Ensure it's false on error
           if (err.response && err.response.status === 404) {
               statsError.value = `无法找到统计数据接口 (${STATS_API_PATH})。`;
           } else {
@@ -110,8 +113,9 @@ export const useStudyLogStore = defineStore('studyLog', () => {
       console.log('[StudyLogStore] Study log added via API:', logData.activity);
 
       console.log('[StudyLogStore] Refreshing stats and logs after adding a new log.');
-      await loadActivityStats();
-      await loadRecentLogs(50);
+      // Force reload stats and logs
+      await loadActivityStats(true);
+      await loadRecentLogs(50); 
       
       success = true;
     } catch (err) {
@@ -119,30 +123,29 @@ export const useStudyLogStore = defineStore('studyLog', () => {
       const backendError = err.response?.data?.message || err.message || '未知网络错误';
       logError.value = `记录学习日志或刷新数据失败: ${backendError}`;
       success = false;
-    } finally {
-      //
     }
     return success;
   }
 
   async function clearAllLogs() {
      isLoadingLogs.value = true;
-     isLoadingStats.value = true;
+     isLoadingStats.value = true; // Also indicate stats might be changing
      logError.value = null;
      statsError.value = null;
      let success = false;
      try {
        await apiClient.delete(`${LOGS_API_BASE_PATH}/all`);
-       logs.value = [];
+       logs.value = []; // Clear local logs immediately
+       logsLoadedSuccessfully.value = true; // Considered "loaded" as empty
        console.log('[StudyLogStore] All study logs cleared from API.');
-       await loadActivityStats();
+       await loadActivityStats(true); // Refresh stats
        success = true;
      } catch (err) {
         console.error('[StudyLogStore] Error clearing study logs:', err);
         const backendError = err.response?.data?.message || err.message || '未知网络错误';
         const errorMsg = `清空日志失败: ${backendError}`;
         logError.value = errorMsg;
-        statsError.value = errorMsg;
+        statsError.value = errorMsg; // Also set statsError as stats refresh might fail
         success = false;
      } finally {
        isLoadingLogs.value = false;
@@ -157,10 +160,12 @@ export const useStudyLogStore = defineStore('studyLog', () => {
           statsPollingIntervalId.value = null;
       }
       console.log('[StudyLogStore] Attempting to start stats polling...');
+      // Initial load before setting interval
       loadActivityStats().then(() => {
-        if (!statsError.value) {
+        // Only start polling if the initial load was successful
+        if (statsLoadedSuccessfully.value) {
             statsPollingIntervalId.value = setInterval(() => {
-                if (!isLoadingStats.value) {
+                if (!isLoadingStats.value) { // Don't poll if a load is already in progress
                     loadActivityStats();
                 } else {
                     console.log('[StudyLogStore] Poll: Stats loading is already in progress, skipping this interval.');
@@ -183,6 +188,22 @@ export const useStudyLogStore = defineStore('studyLog', () => {
       }
   }
 
+  async function initializeStore() {
+      console.log('[StudyLogStore] Initializing...');
+      // Load logs and stats in parallel
+      await Promise.all([
+          loadRecentLogs(), // Load logs first or in parallel
+          loadActivityStats() // Load initial stats
+      ]);
+      // Start polling only after initial stats are attempted
+      if (statsLoadedSuccessfully.value) {
+        startStatsPolling();
+      } else {
+        console.warn("[StudyLogStore] Initial stats load failed in initializeStore, polling not started.");
+      }
+      console.log('[StudyLogStore] Initialization complete.');
+  }
+
   onUnmounted(() => {
       stopStatsPolling();
   });
@@ -191,6 +212,7 @@ export const useStudyLogStore = defineStore('studyLog', () => {
     logs,
     isLoadingLogs,
     logError,
+    logsLoadedSuccessfully, // Export new state
     totalDurationSeconds,
     todayDurationSeconds,
     weekDurationSeconds,
@@ -198,6 +220,7 @@ export const useStudyLogStore = defineStore('studyLog', () => {
     todayOnlineSeconds,
     isLoadingStats,
     statsError,
+    statsLoadedSuccessfully, // Export new state
     isLoading,
     loadRecentLogs,
     loadActivityStats,
@@ -205,13 +228,6 @@ export const useStudyLogStore = defineStore('studyLog', () => {
     clearAllLogs,
     startStatsPolling,
     stopStatsPolling,
-    async initializeStore() {
-        console.log('[StudyLogStore] Initializing...');
-        await Promise.all([
-            loadRecentLogs(),
-        ]);
-        startStatsPolling();
-        console.log('[StudyLogStore] Initialization complete.');
-    }
+    initializeStore
   };
 });

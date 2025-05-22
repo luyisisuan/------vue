@@ -1,15 +1,10 @@
 // src/stores/appStore.js
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-// <<< 导入 apiClient >>>
 import apiClient from '@/utils/apiClient.js';
-// import axios from 'axios'; // <<< 移除或注释掉旧的导入
 import { loadData, saveData } from '@/utils/storage.js';
 import config from '@/config.js';
 import { throttle } from 'lodash-es';
-
-// <<< 不再需要 API_PING_URL 常量 >>>
-// const API_PING_URL = 'http://localhost:8080/api/activity/ping';
 
 export const useAppStore = defineStore('app', () => {
   // --- State ---
@@ -18,6 +13,11 @@ export const useAppStore = defineStore('app', () => {
   });
 
   let activityPingIntervalId = null;
+
+  // --- Sidebar State (NEW) ---
+  const isSidebarCollapsed = ref(false); // 初始为展开 (false)
+  const isSidebarHidden = ref(false);   // 初始为不隐藏 (false)
+  // --- End Sidebar State ---
 
   // --- Actions ---
 
@@ -42,54 +42,41 @@ export const useAppStore = defineStore('app', () => {
     saveData(config.localStorageKeys.persistentOnlineTime, dataToSave);
   }
 
-  // 定期发送活跃心跳到后端
   async function sendActivityPing() {
-      // --- 保持你的日志用于调试 ---
-      console.log('[AppStore] sendActivityPing function CALLED by setInterval.');
+      // console.log('[AppStore] sendActivityPing function CALLED by setInterval.'); // 可按需开启日志
       const now = Date.now();
       const lastActivity = persistentActivityData.value.lastActivityTimestamp;
       const pingIntervalSeconds = config.ACTIVITY_PING_INTERVAL_SECONDS || 30;
-      const threshold = pingIntervalSeconds * 1000 + 5000;
-      console.log(`[AppStore] Ping check: now=${now} (${new Date(now).toLocaleTimeString()}), lastActivity=${lastActivity} (${new Date(lastActivity).toLocaleTimeString()}), threshold=${threshold}ms`);
-      console.log(`[AppStore] Ping check: now - lastActivity = ${now - lastActivity}ms`);
+      const threshold = pingIntervalSeconds * 1000 + 5000; // 允许的延迟
+      // console.log(`[AppStore] Ping check: now - lastActivity = ${now - lastActivity}ms vs threshold ${threshold}ms`); // 可按需开启日志
 
       if (now - lastActivity <= threshold) {
-          console.log('[AppStore] Ping check PASSED. Entering active branch...');
-          console.log(`[AppStore] User active, sending ping for the last ${pingIntervalSeconds} seconds.`);
+          // console.log(`[AppStore] User active, sending ping for the last ${pingIntervalSeconds} seconds.`); // 可按需开启日志
           try {
-              // <<< 使用 apiClient 和相对路径 >>>
               await apiClient.post('/activity/ping', { durationSeconds: pingIntervalSeconds });
-              console.log('[AppStore] Ping request sent successfully (apiClient promise resolved).');
+              // console.log('[AppStore] Ping request sent successfully.'); // 可按需开启日志
           } catch (err) {
-              // 注意：如果 apiClient 的响应拦截器处理了错误，这里的 catch 可能不会执行或接收到的 err 不同
               console.error("[AppStore] Error sending activity ping:", err.response?.data || err.message || err);
           }
       } else {
-          console.log('[AppStore] Ping check FAILED. Entering inactive branch...');
-          console.log("[AppStore] User inactive based on timestamp check, skipping activity ping.");
+          // console.log("[AppStore] User inactive based on timestamp check, skipping activity ping."); // 可按需开启日志
       }
-      console.log('[AppStore] sendActivityPing function FINISHED.');
+      // console.log('[AppStore] sendActivityPing function FINISHED.'); // 可按需开启日志
   }
 
-
-  // 更新最后活动时间戳 (节流)
   const updateLastActivityTimestamp = throttle(() => {
     const now = Date.now();
-    // 检查是否应该更新时间戳 (逻辑保持不变)
     if (now - persistentActivityData.value.lastActivityTimestamp <= config.INACTIVITY_TIMEOUT_MS) {
         persistentActivityData.value.lastActivityTimestamp = now;
         saveLastActivityTimestamp();
     }
-    // ... (其他节流逻辑)
   }, config.ACTIVITY_THROTTLE_MS);
 
-  // 页面卸载前处理 (保持不变)
   function handleBeforeUnload() {
      console.log("[AppStore] Beforeunload: Saving final activity timestamp.");
      saveLastActivityTimestamp();
   }
 
-  // --- 暴露给 App.vue 使用的 Action ---
   function startOnlineTracking() {
       console.log("[AppStore] Starting activity tracking...");
       loadLastActivityTimestamp();
@@ -99,8 +86,6 @@ export const useAppStore = defineStore('app', () => {
       }
       const pingIntervalSeconds = config.ACTIVITY_PING_INTERVAL_SECONDS || 30;
       activityPingIntervalId = setInterval(sendActivityPing, pingIntervalSeconds * 1000);
-      console.log(`[AppStore] Activity ping interval set to ${pingIntervalSeconds} seconds.`);
-      // 添加活动监听器 (保持不变)
       const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
       activityEvents.forEach(eventType => {
         document.addEventListener(eventType, updateLastActivityTimestamp, { passive: true });
@@ -116,7 +101,6 @@ export const useAppStore = defineStore('app', () => {
         clearInterval(activityPingIntervalId);
         activityPingIntervalId = null;
       }
-      // 移除活动监听器 (保持不变)
       const activityEvents = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
       activityEvents.forEach(eventType => {
         document.removeEventListener(eventType, updateLastActivityTimestamp);
@@ -127,14 +111,51 @@ export const useAppStore = defineStore('app', () => {
       handleBeforeUnload();
   }
 
+  // --- Sidebar Actions (NEW) ---
+  function setSidebarCollapsed(collapsed) {
+    isSidebarCollapsed.value = collapsed;
+    // 如果只是收起，确保它不是完全隐藏状态
+    if (isSidebarHidden.value && !collapsed) { // 如果之前是隐藏但现在要展开
+        // isSidebarHidden.value = false; // 这一步由 setSidebarHidden 处理更合适
+    } else if (isSidebarHidden.value && collapsed) {
+        // 如果已经是隐藏状态，收起状态也应该是 true，这里不需要额外操作
+    } else if (!isSidebarHidden.value && collapsed) {
+        // 正常收起
+    }
+  }
+
+  function setSidebarHidden(hidden) {
+    isSidebarHidden.value = hidden;
+    // 如果设置为隐藏，那么它也必须是收起状态
+    if (hidden) {
+      isSidebarCollapsed.value = true;
+    }
+    // 如果设置为不隐藏，但之前是收起状态，保持收起状态
+    // 如果设置为不隐藏，且之前是展开状态，保持展开状态 (由 isSidebarCollapsed 控制)
+  }
+
+  function toggleSidebar() { // 一个简单的切换函数，优先切换收起/展开
+    if (isSidebarHidden.value) {
+        // 如果是隐藏状态，点击切换按钮应该变为展开
+        setSidebarHidden(false);
+        setSidebarCollapsed(false);
+    } else {
+        setSidebarCollapsed(!isSidebarCollapsed.value);
+    }
+  }
+  // --- End Sidebar Actions ---
+
   // --- Expose ---
-  // **修改:** 确保暴露了 persistentActivityData，如果其他地方需要访问的话
-  // (例如 StudyLogSection 可能需要显示在线时长)
   return {
-    persistentActivityData, // <<< 暴露这个 ref
+    persistentActivityData,
     startOnlineTracking,
-    stopOnlineTracking
-    // 注意：updateLastActivityTimestamp 和 sendActivityPing 通常是内部使用的，
-    // 但如果需要外部手动触发（不推荐），也可以暴露。
+    stopOnlineTracking,
+
+    // Sidebar related state and actions
+    isSidebarCollapsed,
+    isSidebarHidden,
+    setSidebarCollapsed,
+    setSidebarHidden,
+    toggleSidebar, // 可选，如果 Sidebar.vue 内部有切换按钮
   };
 });

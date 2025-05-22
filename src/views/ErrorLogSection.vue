@@ -242,87 +242,441 @@ watch(selectedFilterSubject, (newFilter) => {
 //       errorLogStore.loadErrors(selectedFilterSubject.value === 'all' ? null : selectedFilterSubject.value);
 //   }
 // });
-
 </script>
 
 <style scoped>
-/* --- Error Log Specific Styles --- */
+/* --- Global Variables --- */
+:root {
+  --primary-color: #2c3e50;
+  --primary-dark: #1a2531;
+  --secondary-color: #7f8c8d;
+  --danger-color: #c0392b;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --info-color: #3498db;
+
+  --text-dark: #343A40;
+  --text-light: #6C757D;
+  --border-color: #DEE2E6;
+  --background-light: #f8f9fa;
+  --background-white: #FFFFFF;
+
+  --shadow-light: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-medium: 0 3px 8px rgba(0,0,0,0.1);
+
+  --transition-default: all 0.25s ease-in-out;
+  --border-radius-base: 6px;
+}
+
+/* Apply some base styling to the wrapper if needed */
+div {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text-dark);
+}
+
+/* --- Section Header --- */
+.section-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 2px solid var(--primary-color);
+  text-align: center;
+}
+.section-header h1 {
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+/* --- Icon Styling (Pure Color) --- */
+.section-header h1 i,
+.card h2 i,
+.error-item-header h3 i,
+.btn i,
+.file-link i {
+  font-size: 0.9em; /* Default relative size, can be overridden */
+  /* Remove any explicit background or padding that might create a "block" */
+  background: none !important;
+  padding: 0 !important;
+  /* Color will be set by more specific rules */
+}
+
+/* Specific icon colors */
+.section-header h1 i {
+  color: var(--danger-color);
+}
+.card h2 i {
+  color: var(--secondary-color);
+}
+.error-item-header h3 i {
+  color: var(--danger-color);
+}
+.btn-primary i { color: white; }
+.btn-secondary i { color: white; }
+.btn-danger i { color: white; }
+.file-link i {
+  color: var(--info-color);
+}
+
+/* Handle icon-gradient classes by setting a solid color */
+.icon-gradient, .icon-gradient-secondary, .icon-gradient-danger {
+  background: none !important; /* Ensure no background is applied */
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  padding: 0 !important; /* Remove padding if it was for a block */
+  line-height: inherit !important;
+  /* Specific color will be applied by the class itself or a more specific rule */
+}
+
+/* Re-apply specific colors for icon-gradient classes, if they are still used for semantic meaning */
+.section-header i.icon-gradient {
+  color: var(--danger-color);
+}
+.card h2 i.icon-gradient-secondary {
+  color: var(--secondary-color);
+  font-size: 1.25em;
+  margin-right: 0.3em;
+}
+.error-item-header h3 i.icon-gradient-danger {
+  color: var(--danger-color);
+  font-size: 1.25em;
+  margin-right: 0.3em;
+}
+/* --- END OF Icon Styling --- */
+
+
+.section-header p {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  margin-top: 0.3rem;
+}
+
+/* --- Card Styling --- */
+.card {
+  background-color: var(--background-white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-base);
+  box-shadow: var(--shadow-medium);
+  margin-bottom: 1.5rem;
+}
+.card h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  padding: 0.8rem 1.2rem;
+  margin: 0;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
 .error-log-add-card {
-     border-left: 4px solid var(--danger-color);
+  border-left: 4px solid var(--danger-color);
 }
 .error-log-list-card {
-     border-left: 4px solid var(--secondary-color);
+  border-left: 4px solid var(--secondary-color);
+}
+.card > form, .card > .filter-controls, .card > .error-log-container {
+    padding: 1.2rem;
 }
 
-/* Filter controls styling */
-.filter-controls {
-    margin-bottom: 1.5rem; padding: 1rem; background-color: #f8f9fa;
-    border-radius: 8px; display: flex; align-items: center; gap: 1.5rem;
-    flex-wrap: wrap; border: 1px solid var(--border-color);
+/* --- Form Grid & Group --- */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.8rem 1.2rem;
 }
-.control-group { display: flex; align-items: center; gap: 0.5rem; }
-.filter-controls label {
-    font-weight: 500; font-size: 0.9em; color: var(--text-light); white-space: nowrap;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 0.8rem;
 }
-.filter-controls select {
-    padding: 0.4em 0.8em; border-radius: 6px; border: 1px solid var(--border-color);
-    min-width: 150px; font-size: 0.9em; background-color: white;
+.form-group.full-width {
+  grid-column: 1 / -1;
 }
-.filter-controls button { margin-left: auto; }
-
-/* Form Grid/Group (Assume global or define needed parts) */
-.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem 1.5rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.4rem; }
-.form-group.full-width { grid-column: 1 / -1; }
-.form-group label { font-weight: 600; font-size: 0.9em; color: var(--primary-dark); }
+.form-group label {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+}
 .form-group input[type="text"],
 .form-group select,
-.form-group textarea,
-.form-group input[type="file"] {
-    width: 100%; padding: 0.7em 0.9em; border: 1px solid var(--border-color);
-    border-radius: 6px; font-size: 0.95em; font-family: inherit; transition: var(--transition-default);
+.form-group textarea {
+  width: 100%;
+  padding: 0.6em 0.8em;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-base);
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: var(--transition-default);
+  box-sizing: border-box;
 }
-.form-group input[type="file"] { padding: 0.4em; background-color: #f8f9fa; }
-.form-group textarea { resize: vertical; min-height: 60px; }
-.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(74, 105, 189, 0.2); }
-.form-hint { font-size: 0.8em; color: var(--text-light); font-style: italic; }
-.form-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 1rem; }
-.selected-file-info { display: inline-block; margin-left: 10px; font-size: 0.85em; color: var(--text-light); font-style: italic; }
+.form-group input[type="file"] {
+  padding: 0.3em;
+  font-size: 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-base);
+  background-color: var(--background-light);
+}
+.form-group textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--info-color), 0.2); /* Check if info-color has RGB values or use a direct rgba */
+  /* If --info-color is hex like #3498db, you need to convert it for rgba or use a different shadow */
+  /* Example: box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2); */
+}
+.form-hint {
+  font-size: 0.8em;
+  color: var(--text-light);
+  font-style: italic;
+}
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+.selected-file-info {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 0.8em;
+  color: var(--text-light);
+  font-style: italic;
+}
 
-/* Error Log List */
-.error-log-container { margin-top: 1rem; display: grid; gap: 1rem; }
-.error-item { background-color: #fff; border: 1px solid var(--border-color); border-left: 4px solid var(--danger-color); border-radius: 8px; padding: 1rem 1.5rem; box-shadow: var(--shadow-light); transition: var(--transition-default); }
-.error-item:hover { box-shadow: var(--shadow-medium); transform: translateY(-2px); }
-.error-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px dashed var(--border-color); }
-.error-item-header h3 { font-size: 1.05rem; margin-bottom: 0; color: var(--danger-color); display: flex; align-items: center; gap: 0.5em; }
-.error-item-header .timestamp { font-size: 0.8em; color: var(--text-light); white-space: nowrap; padding-left: 1em; flex-shrink: 0; }
-.error-item-body { font-size: 0.95rem; line-height: 1.6; }
-.error-item-body p { margin-bottom: 0.6rem; word-wrap: break-word; }
-.error-item-body strong { font-weight: 600; color: var(--primary-dark); margin-right: 0.5em; }
-.question-text, .reason-text { background-color: #f8f9fa; padding: 0.5rem 0.8rem; border-radius: 4px; display: block; margin-top: 0.2em; white-space: pre-wrap; word-wrap: break-word; font-size: 0.95em; max-height: 200px; overflow-y: auto; }
-.file-link { font-size: 0.9em; color: var(--primary-color); display: inline-flex; align-items: center; gap: 0.3em; word-break: break-all; text-decoration: underline; cursor: pointer; }
-.file-link:hover { color: var(--primary-dark); }
-.file-link i { font-size: 1em; }
-.error-item-footer { margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; }
-.review-info { font-size: 0.8em; color: var(--text-light); margin-right: auto; }
+/* --- Buttons (General & Specific) --- */
+.btn {
+  padding: 0.6em 1.2em;
+  font-size: 0.9rem;
+  border-radius: var(--border-radius-base);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: var(--transition-default);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  text-decoration: none;
+}
 
-/* Loading/Error/Placeholder */
-.loading-indicator, .error-message { text-align: center; padding: 1rem; color: var(--text-light); }
-.error-message { color: var(--danger-color); }
-.placeholder-text { color: var(--text-light); text-align: center; padding: 2rem; font-style: italic; }
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+.btn-primary:hover:not(:disabled) { background-color: var(--primary-dark); border-color: var(--primary-dark); }
+.btn-primary:disabled { background-color: #bdc3c7; border-color: #bdc3c7; cursor: not-allowed; }
 
-/* Header specific icon */
-.section-header i.icon-gradient { background: var(--gradient-danger); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.btn-secondary {
+  background-color: var(--secondary-color);
+  color: white;
+  border-color: var(--secondary-color);
+}
+.btn-secondary:hover:not(:disabled) { background-color: #6c7a7b; border-color: #6c7a7b; }
 
-/* Responsive */
+.btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+  border-color: var(--danger-color);
+}
+.btn-danger:hover:not(:disabled) { background-color: #a5281b; border-color: #a5281b; }
+
+.btn-small {
+    padding: 0.4em 0.8em;
+    font-size: 0.8rem;
+}
+
+/* --- Filter Controls --- */
+.filter-controls {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  background-color: var(--background-light);
+  border-radius: var(--border-radius-base);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  border: 1px solid var(--border-color);
+}
+.control-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.filter-controls label {
+  font-weight: 500;
+  font-size: 0.85em;
+  color: var(--text-dark);
+  white-space: nowrap;
+}
+.filter-controls select {
+  padding: 0.5em 0.7em;
+  border-radius: var(--border-radius-base);
+  border: 1px solid var(--border-color);
+  min-width: 180px;
+  font-size: 0.85em;
+  background-color: white;
+}
+.filter-controls button {
+  margin-left: auto;
+}
+
+/* --- Error Log List & Items --- */
+.error-log-container {
+  margin-top: 1rem;
+  display: grid;
+  gap: 1rem;
+}
+.error-item {
+  background-color: var(--background-white);
+  border: 1px solid var(--border-color);
+  border-left: 5px solid var(--danger-color);
+  border-radius: var(--border-radius-base);
+  padding: 1rem 1.2rem;
+  box-shadow: var(--shadow-light);
+  transition: var(--transition-default);
+}
+.error-item:hover {
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-2px);
+}
+.error-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px dashed #e0e0e0;
+}
+.error-item-header h3 {
+  font-size: 1.1rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+}
+.error-item-header .timestamp {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  white-space: nowrap;
+  padding-left: 0.8em;
+  flex-shrink: 0;
+}
+.error-item-body {
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.error-item-body p {
+  margin-bottom: 0.5rem;
+  word-wrap: break-word;
+}
+.error-item-body p:last-child { margin-bottom: 0; }
+.error-item-body strong {
+  font-weight: 500;
+  color: var(--text-dark);
+  margin-right: 0.3em;
+}
+.question-text,
+.reason-text {
+  background-color: #f9f9f9;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  display: block;
+  margin-top: 0.1em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 0.9em;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+}
+.file-link {
+  font-size: 0.85em;
+  color: var(--primary-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  word-break: break-all;
+  text-decoration: none;
+  border-bottom: 1px dotted var(--primary-color);
+  cursor: pointer;
+}
+.file-link:hover {
+  color: var(--primary-dark);
+  border-bottom-style: solid;
+}
+
+.error-item-footer {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.review-info {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-right: auto;
+}
+.error-item-footer button i { margin-right: 0.3em; }
+
+
+/* --- Loading/Error/Placeholder States --- */
+.loading-indicator,
+.error-message,
+.placeholder-text {
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+.error-message {
+  color: var(--danger-color) !important;
+  background-color: #ffebee;
+  border: 1px solid var(--danger-color);
+  border-radius: var(--border-radius-base);
+}
+.placeholder-text {
+  color: var(--text-light);
+  font-style: italic;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius-base);
+  background-color: #fcfcfc;
+}
+
+/* Ensure Font Awesome base styles are respected (if not globally handled) */
+.fa, .fas, .far, .fab, .fal {
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  /* Font Awesome's own CSS should handle font-family and content */
+}
+
+/* --- Responsive Adjustments --- */
 @media (max-width: 768px) {
-    .filter-controls { flex-direction: column; align-items: stretch; gap: 0.8rem; }
-    .filter-controls select { width: 100%; min-width: unset; }
-    .filter-controls button { margin-left: 0; align-self: flex-end; }
-    .error-item-header { flex-direction: column; align-items: flex-start; gap: 0.3rem; }
-    .error-item-header .timestamp { padding-left: 0; }
-    .error-item-footer { flex-direction: column; align-items: flex-start; gap: 0.8rem; }
-    .review-info { margin-right: 0; }
-    .error-item-footer button { align-self: flex-end; }
+  .section-header h1 { font-size: 1.5rem; }
+  .card h2 { font-size: 1.1rem; }
+  .form-grid { grid-template-columns: 1fr; }
+  .filter-controls { flex-direction: column; align-items: stretch; gap: 0.6rem; }
+  .filter-controls select { width: 100%; min-width: unset; }
+  .filter-controls button { margin-left: 0; align-self: flex-end; }
+
+  .error-item-header { flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+  .error-item-header .timestamp { padding-left: 0; margin-top: 0.2rem; }
+  .error-item-footer { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+  .review-info { margin-right: 0; }
+  .error-item-footer button { align-self: flex-end; }
 }
 </style>

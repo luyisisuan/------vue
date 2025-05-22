@@ -1,61 +1,61 @@
 /* src/assets/gwy-global.css */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'); /* 增加了 wght@800 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* --- CSS Variables --- */
 :root {
-    /* Colors - 微调，使其更现代和精致 */
-    --primary-color: #5a67d8; /* 更现代的蓝色 */
-    --primary-light: #7f8cf0;
-    --primary-dark: #434190;
-    --secondary-color: #6a89cc; /* 保持，或可选择更中性的颜色 */
-    --accent-color: #f59e0b; /* 类似 Tailwind Amber 500 */
-    --success-color: #10b981; /* 类似 Tailwind Emerald 500 */
-    --warning-color: #facc15; /* 类似 Tailwind Yellow 400 */
-    --danger-color: #ef4444;  /* 类似 Tailwind Red 500 */
-    --info-color: #3b82f6;   /* 类似 Tailwind Blue 500 */
-    --study-color: #8b5cf6;  /* 类似 Tailwind Violet 500 */
+    /* Colors - 政务红主题 */
+    --primary-color: #c92a2a; /* 稳重的红色 (例如：石榴红 Pomegranate) */
+    --primary-light: #e06363; /* 较浅的红色 */
+    --primary-dark: #a01a1a;  /* 较深的红色，用于标题和强调 */
+    --secondary-color: #495057; /* 中性深灰色，用于辅助内容或次要按钮 (Bootstrap Gray 700) */
+    --accent-color: #fab005; /* 金黄色，用于重要提示或点缀 (例如：Amber 600) */
+    --success-color: #28a745; /* 标准成功绿色 (Bootstrap Success) */
+    --warning-color: #fd7e14; /* 标准警告橙色 (例如：Orange 600) */
+    --danger-color: #dc3545;  /* 标准危险红色 (Bootstrap Danger) */
+    --info-color: #17a2b8;   /* 标准信息蓝色 (Bootstrap Info) */
+    --study-color: #3457D5;  /* 学习/重点内容蓝色 */
 
-    --bg-color: #f7f9fc; /* 更明亮、干净的背景 */
-    --sidebar-bg: #ffffff;
-    --card-bg: #ffffff;
-    --text-color: #2d3748; /* 更柔和的深灰，代替纯黑 */
-    --text-light: #718096; /* 辅文颜色 */
-    --border-color: #e2e8f0; /* 更浅的边框 */
-    --input-border-color: #cbd5e0; /* 输入框边框 */
-    --focus-ring-color: rgba(90, 103, 216, 0.3); /* 主色调的透明色，用于焦点环 */
+    --bg-color: #f8f9fa; /* 非常浅的灰色背景，更显干净和正式 (Bootstrap Gray 100) */
+    --sidebar-bg: #ffffff; /* 侧边栏背景 */
+    --card-bg: #ffffff;    /* 卡片背景 */
+    --text-color: #212529; /* 更深的文本颜色，提高对比度和正式感 (Bootstrap Gray 900) */
+    --text-light: #6c757d; /* 辅助文本颜色 (Bootstrap Gray 600) */
+    --border-color: #ced4da; /* 更清晰的边框线颜色 (Bootstrap Gray 400) */
+    --input-border-color: #adb5bd; /* 输入框边框颜色 (Bootstrap Gray 500) */
+    --focus-ring-color: rgba(201, 42, 42, 0.35); /* 主题红色的透明色，用于焦点指示 */
 
-    /* Shadows - 更柔和、现代的阴影 */
-    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.03);
-    --shadow-inner: inset 0 2px 4px 0 rgba(0,0,0,0.04); /* 内阴影 */
+    /* Shadows - 更为内敛和清晰的阴影，政务风格通常不过分强调立体感 */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.07), 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 5px -1px rgba(0, 0, 0, 0.08), 0 1px 3px -1px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 5px 10px -3px rgba(0, 0, 0, 0.08), 0 3px 5px -2px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 10px 18px -5px rgba(0, 0, 0, 0.08), 0 6px 8px -5px rgba(0, 0, 0, 0.03);
+    --shadow-inner: inset 0 1px 2px 0 rgba(0,0,0,0.05); /* 内阴影，用于输入框等 */
 
-    /* Gradients - 微调以匹配新色板 */
+    /* Gradients - 匹配政务红主题，可以适度使用或倾向于单色 */
     --gradient-primary: linear-gradient(135deg, var(--primary-light), var(--primary-color));
-    --gradient-accent: linear-gradient(135deg, #fbbf24, var(--accent-color));
-    --gradient-danger: linear-gradient(135deg, #f87171, var(--danger-color));
-    --gradient-secondary: linear-gradient(135deg, #a5b4fc, var(--secondary-color)); /* 调整使其更协调 */
-    --gradient-info: linear-gradient(135deg, #60a5fa, var(--info-color));
-    --gradient-study: linear-gradient(135deg, #a78bfa, var(--study-color));
-    --gradient-success: linear-gradient(135deg, #34d399, var(--success-color)); /* 新增 */
+    --gradient-accent: linear-gradient(135deg, #fcc419, var(--accent-color)); /* Amber 500 to 600 */
+    --gradient-danger: linear-gradient(135deg, #fa5252, var(--danger-color)); /* Red 400 to standard */
+    --gradient-secondary: linear-gradient(135deg, #868e96, var(--secondary-color)); /* Gray 500 to 700 */
+    --gradient-info: linear-gradient(135deg, #3bc9db, var(--info-color)); /* Cyan 400 to standard */
+    --gradient-study: linear-gradient(135deg, #6788f0, var(--study-color));
+    --gradient-success: linear-gradient(135deg, #51cf66, var(--success-color)); /* Green 400 to standard */
 
-    /* Typography */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-    --font-size-base: 16px;
-    --line-height-base: 1.65; /* 略微增加行高，提升可读性 */
-    --letter-spacing-tight: -0.025em;
+    /* Typography - 保持Inter的现代感，调整行高和部分字重以适应政务风格 */
+    --font-family: 'Inter', 'Microsoft YaHei', 'SimSun', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-size-base: 16px; /* 保持基础字号，确保可读性 */
+    --line-height-base: 1.7; /* 增加行高，提升正式感和长文案的可读性 */
+    --letter-spacing-tight: -0.02em;
     --letter-spacing-normal: 0;
-    --letter-spacing-wide: 0.025em;
+    --letter-spacing-wide: 0.02em;
 
     /* Layout */
-    --sidebar-width: 260px;
-    --content-padding: 2.5rem; /* 略微增加内边距 */
-    --card-border-radius: 12px;
-    --control-border-radius: 8px; /* 用于按钮、输入框等控件 */
-    --transition-speed: 0.25s; /* 略微加快过渡速度 */
-    --transition-timing: cubic-bezier(0.4, 0, 0.2, 1); /* 更平滑的过渡曲线 */
+    --sidebar-width: 250px; /* 侧边栏宽度可根据内容和设计调整 */
+    --content-padding: 2rem; /* 内容区域内边距，确保足够的呼吸空间 */
+    --card-border-radius: 6px; /* 卡片圆角减小，显得更稳重方正 */
+    --control-border-radius: 5px; /* 按钮、输入框等控件圆角，与卡片协调 */
+    --transition-speed: 0.2s; /* 过渡动画速度，不宜过快或过慢 */
+    --transition-timing: cubic-bezier(0.35, 0, 0.25, 1); /* 平滑的过渡曲线 */
     --transition-default: all var(--transition-speed) var(--transition-timing);
 }
 
@@ -64,14 +64,14 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    border-width: 0; /* 重置边框宽度，方便使用 Tailwind 类似模式 */
-    border-style: solid; /* 默认边框样式 */
+    border-width: 0; /* 默认无边框，通过具体组件或工具类添加 */
+    border-style: solid;
     border-color: var(--border-color); /* 默认边框颜色 */
 }
 
 html {
     font-size: var(--font-size-base);
-    scroll-behavior: smooth; /* 平滑滚动 */
+    scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
 }
 
@@ -82,41 +82,42 @@ body {
     line-height: var(--line-height-base);
     overflow-x: hidden;
     margin: 0;
-    -webkit-font-smoothing: antialiased; /* 优化字体渲染 (Chrome, Safari) */
-    -moz-osx-font-smoothing: grayscale; /* 优化字体渲染 (Firefox) */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* 文本选中样式 */
+/* 文本选中样式 - 使用主题深色，对比更清晰 */
 ::selection {
-    background-color: var(--primary-color);
+    background-color: var(--primary-dark);
     color: white;
 }
 
 a {
     text-decoration: none;
-    color: var(--primary-color);
+    color: var(--primary-color); /* 链接使用主题红色 */
     transition: color var(--transition-speed) var(--transition-timing);
 }
 a:hover {
-    color: var(--primary-dark);
-    text-decoration: underline; /* 悬停时加下划线，更明确 */
+    color: var(--primary-dark); /* 悬停时颜色加深 */
+    text-decoration: underline; /* 悬停时加下划线，明确指示 */
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-weight: 700; /* 标题更粗一些 */
-    line-height: 1.3;
-    margin-bottom: 0.75em;
-    letter-spacing: var(--letter-spacing-tight); /* 紧凑字间距 */
+    font-weight: 700; /* 标题默认加粗 */
+    line-height: 1.35; /* 标题行高 */
+    margin-bottom: 0.8em; /* 标题下边距 */
+    letter-spacing: var(--letter-spacing-tight);
+    color: var(--primary-dark); /* 所有标题统一使用主题深红色，突出层级和主题 */
 }
-h1 { font-size: 2rem; font-weight: 800; margin-bottom: 1em;} /* 调整 H1 大小和权重 */
-h2 { font-size: 1.5rem; color: var(--primary-dark); margin-bottom: 1.25rem; }
-h3 { font-size: 1.25rem; }
+h1 { font-size: 2.1rem; font-weight: 800; margin-bottom: 1.1em;} /* 主标题更突出 */
+h2 { font-size: 1.6rem; margin-bottom: 1.3rem; }
+h3 { font-size: 1.3rem; font-weight: 600;} /* 副标题字重可略轻 */
 
 /* --- App Layout --- */
 .app-container {
     display: flex;
     min-height: 100vh;
-    background-color: var(--bg-color); /* 确保容器背景 */
+    background-color: var(--bg-color);
 }
 
 /* --- Main Content Area Basic Layout --- */
@@ -126,29 +127,30 @@ h3 { font-size: 1.25rem; }
   padding: var(--content-padding);
   transition: margin-left var(--transition-speed) var(--transition-timing);
   overflow-y: auto;
-  min-width: 320px; /* 保证最小宽度 */
+  min-width: 320px; /* 保证内容区域最小宽度 */
 }
 
 /* --- Section Styling --- */
 .section-header {
-    margin-bottom: 2.5rem; /* 增加间距 */
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 2.8rem; /* 区域头部下方间距增大 */
+    padding-bottom: 1.5rem; /* 内边距调整 */
+    border-bottom: 2px solid var(--primary-color); /* 底部边框使用主题色，更突出和正式 */
 }
 .section-header h1 {
     display: flex;
     align-items: center;
-    gap: 0.85rem; /* 调整间隙 */
-    margin-bottom: 0.35rem;
+    gap: 0.9rem; /* 图标与标题文字间距 */
+    margin-bottom: 0.5rem;
+    color: var(--primary-dark); /* 确保区域标题颜色为主题深红 */
 }
 .section-header p {
     color: var(--text-light);
-    font-size: 1rem;
-    max-width: 70ch; /* 限制描述文本宽度，提高可读性 */
+    font-size: 1.05rem; /* 描述文本略微增大，提高可读性 */
+    max-width: 75ch; /* 限制文本宽度，优化阅读体验 */
 }
 
 /* --- Enhanced Icon Gradient Styling --- */
-.icon-gradient,
+.icon-gradient, /* 主色图标 */
 .icon-gradient-secondary,
 .icon-gradient-danger,
 .icon-gradient-info,
@@ -159,150 +161,172 @@ h3 { font-size: 1.25rem; }
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    display: inline-block; /* 确保背景正确应用 */
-    line-height: 1; /* 防止意外的行高影响 */
+    display: inline-block;
+    line-height: 1; /* 确保背景正确应用 */
+    padding: 0.1em; /* 微调，防止渐变色图标边缘被切割 */
 }
-.icon-gradient { background: var(--gradient-primary); font-size: 1.6em; } /* 调整大小 */
-.icon-gradient-secondary { background: var(--gradient-secondary); font-size: 1.2em; margin-right: 0.3em; }
-.icon-gradient-danger { background: var(--gradient-danger); font-size: 1.2em; margin-right: 0.3em; }
-.icon-gradient-info { background: var(--gradient-info); font-size: 1.2em; margin-right: 0.3em; }
-.icon-gradient-study { background: var(--gradient-study); font-size: 1.2em; margin-right: 0.3em; }
-.icon-gradient-success { background: var(--gradient-success); font-size: 1.2em; margin-right: 0.3em; }
-.icon-gradient-accent { background: var(--gradient-accent); font-size: 1.2em; margin-right: 0.3em; }
-.icon-gradient-warning { background: linear-gradient(135deg, #fde047, var(--warning-color)); font-size: 1.2em; margin-right: 0.3em; }
+.icon-gradient { background: var(--gradient-primary); font-size: 1.65em; }
+.icon-gradient-secondary { background: var(--gradient-secondary); font-size: 1.25em; margin-right: 0.3em; }
+.icon-gradient-danger { background: var(--gradient-danger); font-size: 1.25em; margin-right: 0.3em; }
+.icon-gradient-info { background: var(--gradient-info); font-size: 1.25em; margin-right: 0.3em; }
+.icon-gradient-study { background: var(--gradient-study); font-size: 1.25em; margin-right: 0.3em; }
+.icon-gradient-success { background: var(--gradient-success); font-size: 1.25em; margin-right: 0.3em; }
+.icon-gradient-accent { background: var(--gradient-accent); font-size: 1.25em; margin-right: 0.3em; }
+.icon-gradient-warning { background: linear-gradient(135deg, #ffc94d, var(--warning-color)); font-size: 1.25em; margin-right: 0.3em; }
 
 
-/* --- Card Component (Enhanced) --- */
+/* --- Card Component (Enhanced for Formal Style) --- */
 .card {
     background-color: var(--card-bg);
     border-radius: var(--card-border-radius);
-    padding: 2rem; /* 增加内边距 */
-    margin-bottom: 2rem; /* 增加间距 */
-    box-shadow: var(--shadow-md); /* 使用更柔和的阴影 */
-    border: 1px solid var(--border-color);
-    transition: box-shadow var(--transition-speed) var(--transition-timing), transform var(--transition-speed) var(--transition-timing);
+    padding: 2rem; /* 卡片内边距 */
+    margin-bottom: 2.2rem; /* 卡片间距 */
+    box-shadow: var(--shadow-md); /* 使用调整后的阴影 */
+    border: 1px solid var(--border-color); /* 清晰的卡片边框 */
+    transition: box-shadow var(--transition-speed) var(--transition-timing), border-color var(--transition-speed) var(--transition-timing);
     overflow: hidden; /* 确保内部元素不会溢出圆角 */
 }
 .card:hover {
-    box-shadow: var(--shadow-lg); /* 悬停时阴影更明显 */
-    transform: translateY(-4px); /* 轻微上浮效果 */
+    box-shadow: var(--shadow-lg); /* 悬停时阴影略微增强 */
+    border-color: var(--primary-light); /* 悬停时边框颜色变为主题浅红色，提供反馈 */
+    /* transform: translateY(-2px); 政务风格通常不需要浮动效果，保持稳重，可按需移除注释 */
 }
 .card-header {
     padding-bottom: 1rem;
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.5rem; /* 卡片头和内容之间的间距 */
+    border-bottom: 1px solid var(--border-color); /* 卡片头部分隔线 */
 }
 .card-header h3 {
     margin-bottom: 0.25rem;
+    color: var(--primary-dark); /* 卡片标题也使用主题深红色 */
+    font-size: 1.2rem; /* 调整卡片内标题大小 */
 }
-
-/* --- Button Styling (Enhanced) --- */
+/* --- Button Styling (Enhanced for Formal Style) --- */
 .btn {
-    padding: 0.75em 1.5em; /* 调整内边距 */
-    border: 1px solid transparent; /* 默认透明边框，方便后续样式 */
-    border-radius: var(--control-border-radius); /* 统一圆角 */
+    padding: 0.7em 1.6em; /* 按钮内边距，使其更饱满易点 */
+    border: 1px solid transparent; /* 默认透明边框，具体类型按钮可覆盖 */
+    border-radius: var(--control-border-radius); /* 统一控件圆角 */
     cursor: pointer;
-    font-size: 0.95rem; /* 略微调整字体大小 */
-    font-weight: 600;
+    font-size: 0.98rem; /* 按钮文字大小 */
+    font-weight: 600; /* 按钮文字加粗 */
     transition: var(--transition-default);
     text-align: center;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.6em;
-    line-height: 1.2; /* 调整行高 */
-    box-shadow: var(--shadow-sm); /* 默认小阴影 */
-    text-decoration: none;
-    color: inherit; /* 继承颜色，方便覆盖 */
+    gap: 0.65em; /* 按钮内图标与文字间距 */
+    line-height: 1.4; /* 按钮行高 */
+    box-shadow: var(--shadow-xs); /* 按钮默认使用较小阴影 */
+    text-decoration: none; /* 确保链接样式的按钮无下划线 */
+    color: inherit; /* 方便颜色覆盖 */
     user-select: none; /* 防止文本选中 */
 }
 .btn:hover {
-    transform: translateY(-2px) scale(1.02); /* 悬停时轻微上浮和放大 */
-    box-shadow: var(--shadow-md);
+    transform: translateY(-1px); /* 悬停时轻微上浮，提供反馈 */
+    box-shadow: var(--shadow-sm); /* 悬停时阴影略增强 */
 }
 .btn:active {
-    transform: translateY(0px) scale(0.98); /* 点击时下沉和缩小 */
-    box-shadow: var(--shadow-xs);
+    transform: translateY(0px) scale(0.99); /* 点击时效果微调 */
+    box-shadow: var(--shadow-xs); /* 点击时恢复初始阴影或更小 */
 }
 /* 焦点样式，提升无障碍性 */
 .btn:focus-visible {
     outline: 2px solid transparent;
     outline-offset: 2px;
-    box-shadow: 0 0 0 3px var(--bg-color), 0 0 0 5px var(--primary-color); /* 漂亮的焦点环 */
+    box-shadow: 0 0 0 3px var(--bg-color), 0 0 0 5px var(--primary-color); /* 清晰的焦点环 */
 }
 
-.btn-primary { background: var(--gradient-primary); color: white; border-color: var(--primary-dark); }
-.btn-primary:hover { filter: brightness(1.15); border-color: var(--primary-dark); }
+.btn-primary {
+    background-color: var(--primary-color); /* 主题红色背景 */
+    color: white; /* 白色文字 */
+    border-color: var(--primary-dark); /* 边框使用主题深红色，增加轮廓感 */
+    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.1); /* 增加细微高光效果 */
+}
+.btn-primary:hover {
+    background-color: var(--primary-dark); /* 悬停时背景变为主题深红色 */
+    border-color: var(--primary-dark);
+    filter: none; /* 移除之前的brightness，直接改变颜色 */
+}
 
-.btn-secondary { background-color: var(--card-bg); color: var(--text-color); border-color: var(--input-border-color); }
-.btn-secondary:hover { background-color: #f1f5f9; border-color: var(--text-light); color: var(--primary-dark); } /* Tailwind slate-200 */
+.btn-secondary {
+    background-color: var(--secondary-color); /* 次要按钮使用中性深灰色 */
+    color: white;
+    border-color: var(--secondary-color);
+}
+.btn-secondary:hover {
+    background-color: #343a40; /* Darken secondary color (Bootstrap Gray 800) */
+    border-color: #343a40;
+    color: white;
+}
 
-.btn-success { background-color: var(--success-color); color: white; border-color: #059669; } /* Tailwind Emerald 600 */
-.btn-success:hover { background-color: #059669; }
+.btn-success { background-color: var(--success-color); color: white; border-color: #1e7e34; /* Darken success */ }
+.btn-success:hover { background-color: #1e7e34; }
 
-.btn-warning { background-color: var(--warning-color); color: #78350f; border-color: #f59e0b; } /* Tailwind Amber 500, text-amber-900 */
-.btn-warning:hover { background-color: #f59e0b; }
+.btn-warning { background-color: var(--warning-color); color: #212529; /* 深色文字确保对比度 */ border-color: #e36f02; /* Darken warning */ }
+.btn-warning:hover { background-color: #e36f02; }
 
-.btn-danger { background-color: var(--danger-color); color: white; border-color: #dc2626; } /* Tailwind Red 600 */
-.btn-danger:hover { background-color: #dc2626; }
+.btn-danger { background-color: var(--danger-color); color: white; border-color: #b02a37; /* Darken danger */ }
+.btn-danger:hover { background-color: #b02a37; }
 
-.btn-info { background-color: var(--info-color); color: white; border-color: #2563eb; } /* Tailwind Blue 600 */
-.btn-info:hover { background-color: #2563eb; }
+.btn-info { background-color: var(--info-color); color: white; border-color: #117a8b; /* Darken info */ }
+.btn-info:hover { background-color: #117a8b; }
 
-.btn-link { /* 新增链接样式按钮 */
+.btn-link {
     background-color: transparent;
-    color: var(--primary-color);
+    color: var(--primary-color); /* 链接按钮使用主题红色 */
     box-shadow: none;
     padding-left: 0.5em;
     padding-right: 0.5em;
+    border-color: transparent; /* 确保无边框 */
+    font-weight: normal; /* 链接样式的按钮通常不需要加粗 */
 }
 .btn-link:hover {
     color: var(--primary-dark);
     text-decoration: underline;
-    background-color: rgba(var(--primary-color), 0.05); /* 极淡的背景色 */
-    transform: none; /* 取消浮动 */
+    background-color: rgba(201, 42, 42, 0.05); /* 悬停时主题色的极淡背景 */
+    transform: none; /* 链接按钮通常无位移变换 */
     box-shadow: none;
 }
 
 .btn-small {
-    padding: 0.5em 1em;
-    font-size: 0.85rem;
+    padding: 0.45em 1em;
+    font-size: 0.88rem;
 }
-.btn:disabled, .btn.disabled { /* 增加 .disabled 类 */
-    background-color: #e2e8f0 !important; /* Tailwind slate-200 */
-    color: #94a3b8 !important; /* Tailwind slate-400 */
-    border-color: #e2e8f0 !important;
+.btn:disabled, .btn.disabled {
+    background-color: #adb5bd !important; /* Bootstrap Gray 500 */
+    color: #f8f9fa !important; /* Light text on gray for contrast */
+    border-color: #adb5bd !important;
     cursor: not-allowed;
-    opacity: 0.7;
+    opacity: 0.65; /* 降低透明度以示禁用 */
     transform: none;
     box-shadow: none;
     filter: none;
 }
 
-/* --- General Form Styling (Enhanced) --- */
+/* --- General Form Styling (Enhanced for Formal Style) --- */
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* 增加最小宽度 */
-    gap: 1.25rem 1.75rem; /* 调整间距 */
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* 响应式表单列 */
+    gap: 1.5rem 2rem; /* 网格间距调整 */
 }
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem; /* 标签和输入框的间距 */
+    gap: 0.6rem; /* 标签和输入框的间距 */
 }
 .form-group.full-width {
-    grid-column: 1 / -1;
+    grid-column: 1 / -1; /* 占满整行 */
 }
 .form-group label {
-    font-weight: 600;
-    font-size: 0.9em;
-    color: var(--text-color); /* 使用标准文本颜色 */
+    font-weight: 600; /* 标签加粗 */
+    font-size: 0.92em;
+    color: var(--text-color);
 }
 .form-control, /* 通用控件类 */
 .form-group input[type="text"],
 .form-group input[type="number"],
-.form-group input[type="email"], /* 新增 */
-.form-group input[type="password"], /* 新增 */
+.form-group input[type="email"],
+.form-group input[type="password"],
 .form-group input[type="file"],
 .form-group input[type="url"],
 .form-group input[type="datetime-local"],
@@ -310,15 +334,15 @@ h3 { font-size: 1.25rem; }
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: 0.75em 1em; /* 统一内边距 */
-    border: 1px solid var(--input-border-color);
-    border-radius: var(--control-border-radius);
+    padding: 0.7em 1em; /* 统一内边距 */
+    border: 1px solid var(--input-border-color); /* 统一边框颜色 */
+    border-radius: var(--control-border-radius); /* 统一圆角 */
     font-size: 0.95em;
     font-family: inherit;
-    background-color: var(--card-bg); /* 与卡片背景一致，或使用 --bg-color */
+    background-color: var(--card-bg); /* 输入框背景与卡片一致 */
     color: var(--text-color);
     transition: border-color var(--transition-speed) var(--transition-timing), box-shadow var(--transition-speed) var(--transition-timing);
-    box-shadow: var(--shadow-inner); /* 细微内阴影 */
+    box-shadow: var(--shadow-inner); /* 细微内阴影，增加质感 */
 }
 /* 焦点样式 */
 .form-control:focus,
@@ -326,68 +350,75 @@ h3 { font-size: 1.25rem; }
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px var(--focus-ring-color), var(--shadow-inner); /* 焦点环 + 内阴影 */
+    border-color: var(--primary-color); /* 焦点时边框变为主题红色 */
+    box-shadow: 0 0 0 3px var(--focus-ring-color), var(--shadow-inner); /* 清晰的焦点环 + 内阴影 */
 }
 .form-group textarea {
-    resize: vertical;
-    min-height: 80px;
+    resize: vertical; /* 允许垂直方向调整大小 */
+    min-height: 90px; /* 文本域最小高度 */
 }
 .form-group select {
     appearance: none; /* 移除默认箭头 */
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 0.75rem center;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%23495057' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); /* 自定义箭头颜色 (var(--secondary-color)) */
+    background-position: right 0.85rem center;
     background-repeat: no-repeat;
-    background-size: 1.25em 1.25em;
-    padding-right: 2.5rem; /* 为自定义箭头留出空间 */
+    background-size: 1.15em 1.15em;
+    padding-right: 2.8rem; /* 为自定义箭头留出空间 */
 }
 .form-group input[type="file"] {
-    padding: 0.5em; /* 文件输入框特殊处理 */
+    padding: 0.5em;
     font-size: 0.9em;
     background-color: var(--bg-color); /* 文件输入框背景可以浅一些 */
     box-shadow: none;
+    border-color: var(--border-color); /* 文件选择框边框颜色统一 */
 }
 .form-group input[type="file"]::file-selector-button { /* 样式化文件选择按钮 */
-    margin-right: 0.8em;
+    margin-right: 0.9em;
     border: 0;
-    background: var(--primary-color);
-    padding: 0.5em 0.8em;
-    border-radius: calc(var(--control-border-radius) - 2px); /* 略小一点的圆角 */
+    background: var(--primary-color); /* 文件选择按钮使用主题红色 */
+    padding: 0.6em 0.9em;
+    border-radius: calc(var(--control-border-radius) - 1px); /* 略小一点的圆角 */
     color: white;
     cursor: pointer;
     transition: background-color var(--transition-speed) var(--transition-timing);
+    font-weight: 500; /* 按钮文字稍加粗 */
 }
 .form-group input[type="file"]::file-selector-button:hover {
-    background: var(--primary-dark);
+    background: var(--primary-dark); /* 悬停时主题深红色 */
 }
 
 .form-hint {
-    font-size: 0.85em;
+    font-size: 0.88em;
     color: var(--text-light);
-    font-style: italic;
-    margin-top: 0.25rem;
+    /* font-style: italic; 移除斜体，更正式 */
+    margin-top: 0.3rem; /* 提示文本与输入框间距 */
 }
 .form-actions {
-    grid-column: 1 / -1;
+    grid-column: 1 / -1; /* 占满整行 */
     display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem; /* 按钮间距 */
-    margin-top: 1.5rem;
+    justify-content: flex-end; /* 操作按钮默认右对齐，政务常见 */
+    gap: 0.85rem; /* 按钮间距 */
+    margin-top: 1.8rem; /* 与上方表单项的间距 */
+    padding-top: 1.5rem; /* 操作区域顶部内边距，视觉上与表单项分隔 */
+    border-top: 1px solid var(--border-color); /* 操作区域顶部加分隔线，增强区块感 */
 }
 .form-group input[type="checkbox"],
-.form-group input[type="radio"] { /* 简单的 checkbox/radio 样式 */
-    width: auto;
-    margin-right: 0.5em;
-    accent-color: var(--primary-color); /* 使用浏览器原生增强，颜色匹配主色 */
+.form-group input[type="radio"] {
+    width: 1.1em; /* 增大复选框/单选框的点击区域感 */
+    height: 1.1em;
+    margin-right: 0.6em;
+    accent-color: var(--primary-color); /* 使用浏览器原生增强，颜色匹配主题红色 */
     box-shadow: none;
+    vertical-align: middle; /* 与标签文字垂直居中对齐 */
 }
 .form-group .checkbox-label,
 .form-group .radio-label {
     display: flex;
     align-items: center;
-    font-weight: normal;
+    font-weight: normal; /* 标签文字正常字重 */
     font-size: 0.95em;
     color: var(--text-color);
+    padding-top: 0.1em; /* 微调对齐 */
 }
 
 
@@ -395,36 +426,36 @@ h3 { font-size: 1.25rem; }
 .placeholder-text {
     color: var(--text-light);
     text-align: center;
-    padding: 3rem 1rem; /* 增加内边距 */
-    font-style: italic;
-    font-size: 1.1rem;
+    padding: 3.5rem 1.5rem; /* 内边距调整 */
+    /* font-style: italic; 移除斜体，更显正式 */
+    font-size: 1.05rem; /* 调整字体大小 */
     border: 2px dashed var(--border-color); /* 虚线边框 */
-    border-radius: var(--card-border-radius);
-    background-color: rgba(var(--card-bg), 0.5);
+    border-radius: var(--card-border-radius); /* 与卡片圆角一致 */
+    background-color: rgba(255, 255, 255, 0.7); /* 背景色微调，使其与背景有轻微区分 */
 }
 
 /* --- 通用进度条样式 (Enhanced) --- */
 .progress-bar-container {
     width: 100%;
-    margin: 0.5rem 0; /* 上下边距 */
+    margin: 0.6rem 0; /* 上下边距 */
 }
 .progress-bar {
-    height: 10px; /* 略微加高 */
-    background-color: #e9ecef;
-    border-radius: 5px; /* 对应高度的圆角 */
+    height: 12px; /* 略微加高，更清晰 */
+    background-color: #dee2e6; /* 进度条背景色 (Bootstrap Gray 300) */
+    border-radius: 6px; /* 对应高度的圆角 */
     overflow: hidden;
     box-shadow: var(--shadow-inner);
 }
 .progress-fill {
     height: 100%;
-    background: var(--gradient-primary); /* 默认进度条颜色 */
-    border-radius: 5px;
-    transition: width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1); /* 更平滑的过渡 */
+    background: var(--gradient-primary); /* 默认进度条颜色使用主题渐变 */
+    border-radius: 6px;
+    transition: width 0.5s cubic-bezier(0.35, 0, 0.25, 1); /* 更平滑的过渡 */
     width: 0%;
     position: relative;
     overflow: hidden; /* For animated shine */
 }
-/* 进度条动画光泽效果 (可选) */
+/* 进度条动画光泽效果 (可选，政务风格可考虑移除或简化) */
 .progress-fill::after {
     content: '';
     position: absolute;
@@ -434,49 +465,49 @@ h3 { font-size: 1.25rem; }
     right: 0;
     background-image: linear-gradient(
         -45deg,
-        rgba(255, 255, 255, 0.2) 25%,
+        rgba(255, 255, 255, 0.15) 25%, /* 降低光泽透明度 */
         transparent 25%,
         transparent 50%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(255, 255, 255, 0.2) 75%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0.15) 75%,
         transparent 75%,
         transparent
     );
     z-index: 1;
-    background-size: 50px 50px;
-    animation: moveShine 2s linear infinite;
-    opacity: 0.5;
+    background-size: 40px 40px; /* 调整光泽大小 */
+    animation: moveShine 2.5s linear infinite;
+    opacity: 0.6; /* 光泽效果透明度 */
 }
 @keyframes moveShine {
     0% { background-position: 0 0; }
-    100% { background-position: 50px 50px; }
+    100% { background-position: 40px 40px; }
 }
 
-.progress-bar.mini { height: 6px; border-radius: 3px; }
-.progress-fill.mini { border-radius: 3px; }
+.progress-bar.mini { height: 8px; border-radius: 4px; }
+.progress-fill.mini { border-radius: 4px; }
 .progress-fill.success { background: var(--gradient-success); }
-.progress-fill.warning { background: var(--gradient-accent); } /* 使用 accent 的渐变 */
+.progress-fill.warning { background: var(--gradient-accent); }
 .progress-fill.danger { background: var(--gradient-danger); }
 .progress-fill.info { background: var(--gradient-info); }
 
 
-/* --- 关键进度摘要网格 (基础样式 - 移到全局) --- */
+/* --- 关键进度摘要网格 --- */
 .progress-summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); /* 调整最小宽度 */
-    gap: 1.5rem; /* 调整间距 */
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); /* 调整最小宽度 */
+    gap: 1.8rem; /* 调整间距 */
 }
 
 /* --- 全局高亮样式 (如果使用 v-html) --- */
 mark {
-    background-color: var(--accent-color); /* 使用 accent 颜色 */
-    color: var(--text-color); /* 或白色，取决于 accent 颜色深浅 */
-    padding: 0.2em 0.3em; /* 调整内边距 */
-    border-radius: 4px;
-    box-shadow: var(--shadow-xs);
+    background-color: var(--accent-color); /* 使用点缀色 (金黄色) */
+    color: #212529; /* 深色文字确保可读性 */
+    padding: 0.25em 0.4em; /* 调整内边距 */
+    border-radius: 4px; /* 微小圆角 */
+    box-shadow: var(--shadow-xs); /* 轻微阴影 */
 }
 
-/* --- Utility Classes (新增一些实用工具类) --- */
+/* --- Utility Classes (保持，可按需增删) --- */
 .sr-only { /* For screen readers only */
   position: absolute;
   width: 1px;
@@ -504,77 +535,93 @@ mark {
 .justify-center { justify-content: center; }
 .w-full { width: 100%; }
 
-/* --- Responsive Adjustments (全局调整) --- */
+/* --- Responsive Adjustments (全局调整，政务风格下保持清晰易读) --- */
 @media (max-width: 1024px) { /* 介于桌面和平板之间 */
     :root {
-         --sidebar-width: 240px;
-         --content-padding: 2rem;
+         --sidebar-width: 230px;
+         --content-padding: 1.8rem;
     }
     .main-content {
         padding: var(--content-padding);
     }
-    .section-header h1 { font-size: 1.75rem; }
+    .section-header h1 { font-size: 1.85rem; }
+    h1 { font-size: 1.9rem; }
+    h2 { font-size: 1.5rem; }
 }
 
 @media (max-width: 768px) { /* Tablet and Mobile */
     :root {
         --sidebar-width: 0; /* 移动端通常隐藏侧边栏或变为抽屉式 */
-        --content-padding: 1.5rem;
-        --font-size-base: 15px;
+        --content-padding: 1.2rem; /* 移动端内容区域内边距减小 */
+        --font-size-base: 15px; /* 移动端基础字号可略小，但仍需保证可读性 */
     }
     .main-content {
       margin-left: 0; /* 移动端无侧边栏挤压 */
       padding: var(--content-padding);
-      padding-top: 1.5rem; /* 确保顶部有足够空间，如果顶部有导航栏的话 */
+      padding-top: 1.2rem; /* 确保顶部有足够空间，如果顶部有导航栏的话 */
     }
 
-    h1 { font-size: 1.75rem; }
-    h2 { font-size: 1.35rem; }
-    h3 { font-size: 1.15rem; }
+    h1 { font-size: 1.7rem; }
+    h2 { font-size: 1.3rem; }
+    h3 { font-size: 1.1rem; }
 
-    .section-header { margin-bottom: 2rem; padding-bottom: 1rem; }
-    .section-header h1 { font-size: 1.6rem; gap: 0.6rem; }
-    .section-header p { font-size: 0.95rem; }
+    .section-header { margin-bottom: 1.8rem; padding-bottom: 0.8rem; }
+    .section-header h1 { font-size: 1.5rem; gap: 0.5rem; }
+    .section-header p { font-size: 0.98rem; }
 
-    .card { padding: 1.5rem; margin-bottom: 1.5rem; }
-    .card:hover { transform: translateY(-2px); } /* 移动端悬停效果不明显，可减弱或移除 */
+    .card { padding: 1.2rem; margin-bottom: 1.2rem; }
+    /* .card:hover { transform: none; } 移动端触屏通常无悬停效果，可移除transform */
 
-    .btn { padding: 0.65em 1.3em; font-size: 0.9rem; }
-    .btn:hover { transform: translateY(-1px) scale(1.01); } /* 移动端悬停效果减弱 */
-    .btn:active { transform: translateY(0) scale(0.98); }
+    .btn { padding: 0.6em 1.2em; font-size: 0.92rem; }
+    /* .btn:hover { transform: none; } */
+    /* .btn:active { transform: scale(0.99); } */
 
     .form-grid {
-        grid-template-columns: 1fr; /* 移动端表单列变为单列 */
-        gap: 1rem;
+        grid-template-columns: 1fr; /* 移动端表单列变为单列，更易用 */
+        gap: 1.2rem;
     }
     .form-group input[type="text"],
     .form-group select,
     .form-group textarea {
-        padding: 0.7em 0.9em;
-        font-size: 0.9rem;
+        padding: 0.65em 0.9em;
+        font-size: 0.92rem;
     }
+    .form-actions { margin-top: 1.5rem; padding-top: 1.2rem; gap: 0.7rem;}
+
 
     .progress-summary-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 1.2rem;
     }
-    .placeholder-text { padding: 2rem 1rem; font-size: 1rem; }
+    .placeholder-text { padding: 2.5rem 1rem; font-size: 0.95rem; }
 }
 
-@media (max-width: 480px) { /* Smaller Mobile */
+@media (max-width: 480px) { /* Smaller Mobile Devices */
     :root {
-        --content-padding: 1rem;
-        --font-size-base: 14px;
+        --content-padding: 0.8rem; /* 进一步减小内边距 */
+        --font-size-base: 14px; /* 最小设备字号，需谨慎调整以防过小 */
     }
     .main-content {
         padding: var(--content-padding);
-        padding-top: 1rem;
+        padding-top: 0.8rem;
     }
-    h1 { font-size: 1.5rem; }
-    h2 { font-size: 1.2rem; }
+    h1 { font-size: 1.45rem; }
+    h2 { font-size: 1.15rem; }
 
-    .section-header h1 { font-size: 1.4rem; }
-    .card { padding: 1rem; }
-    .btn { font-size: 0.85rem; gap: 0.4em; }
-    .btn-small { padding: 0.4em 0.8em; font-size: 0.75rem; }
+    .section-header h1 { font-size: 1.3rem; }
+    .card { padding: 0.9rem; }
+    .btn { font-size: 0.88rem; gap: 0.35em; padding: 0.55em 1em; }
+    .btn-small { padding: 0.4em 0.8em; font-size: 0.8rem; }
+    /* 小屏幕下，表单操作按钮可以考虑垂直堆叠，方便点击 */
+    .form-actions {
+        flex-direction: column; /* 按钮垂直排列 */
+        align-items: stretch; /* 按钮宽度撑满容器 */
+    }
+    .form-actions .btn {
+        width: 100%; /* 按钮宽度100% */
+        margin-bottom: 0.5rem; /* 按钮间增加垂直间距 */
+    }
+    .form-actions .btn:last-child {
+        margin-bottom: 0; /* 最后一个按钮无下边距 */
+    }
 }

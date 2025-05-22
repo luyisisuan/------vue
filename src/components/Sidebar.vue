@@ -1,13 +1,16 @@
 <!-- src/components/Sidebar.vue -->
 <template>
-  <aside class="sidebar">
+  <!-- 
+    动态绑定 'is-collapsed' 类，其值来自 appStore.isSidebarCollapsed
+    Sidebar 组件自身不再通过 v-if 控制显隐，这个由 App.vue 控制
+  -->
+  <aside class="sidebar" :class="{ 'is-collapsed': appStore.isSidebarCollapsed }">
     <div class="sidebar-header">
       <i class="fas fa-rocket logo-icon"></i>
       <span class="logo-text">备考站</span>
     </div>
     <nav class="sidebar-nav">
       <ul>
-        <!-- 使用 router-link 替换 a 标签 -->
         <li>
           <router-link to="/dashboard" class="nav-link" aria-label="仪表盘">
             <i class="fas fa-tachometer-alt fa-fw"></i><span>仪表盘</span>
@@ -43,13 +46,11 @@
             <i class="fas fa-chart-pie fa-fw"></i><span>学习统计</span>
           </router-link>
         </li>
-         <!-- 新增: 学习目标链接 -->
          <li>
           <router-link to="/goals" class="nav-link">
             <i class="fas fa-bullseye fa-fw"></i><span>学习目标</span>
           </router-link>
         </li>
-        <!-- /新增 -->
         <li>
           <router-link to="/notes" class="nav-link" aria-label="备考笔记">
             <i class="fas fa-pencil-alt fa-fw"></i><span>备考笔记</span>
@@ -60,35 +61,30 @@
             <i class="fas fa-link fa-fw"></i><span>资源库</span>
           </router-link>
         </li>
-         <!-- 如果有 Settings -->
-         <!--
-         <li>
-           <router-link to="/settings" class="nav-link" aria-label="设置">
-             <i class="fas fa-cog fa-fw"></i><span>设置</span>
-           </router-link>
-         </li>
-         -->
       </ul>
     </nav>
     <div class="sidebar-footer">
       <span id="current-time">{{ currentTime }}</span>
-      <!-- 直接显示注入的在线时长 -->
-      <!-- <span id="online-time-display" class="footer-stat">在线: {{ injectedOnlineTime }}</span> -->
       <p>©2253864680@qq.com|段绪程</p>
     </div>
+    <!-- 可选的切换按钮，调用 appStore 中的 toggleSidebar -->
+    <button @click="appStore.toggleSidebar" class="sidebar-toggle-btn" :title="appStore.isSidebarCollapsed && !appStore.isSidebarHidden ? '展开侧边栏' : '收起侧边栏'">
+       <i :class="appStore.isSidebarCollapsed && !appStore.isSidebarHidden ? 'fas fa-chevron-right' : 'fas fa-chevron-left'"></i>
+    </button>
   </aside>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, inject } from 'vue';
-import { RouterLink } from 'vue-router'; // 导入 RouterLink
+import { ref, onMounted, onUnmounted } from 'vue'; // 移除了 inject 和 computed (如果只用于此组件的sidebar状态)
+import { useAppStore } from '@/stores/appStore.js'; // 导入 appStore
+
+const appStore = useAppStore(); // 获取 appStore 实例
 
 const currentTime = ref('--:--:--');
 let timeInterval = null;
 
-// 使用 inject 接收来自 App.vue 的在线时长
-// 'N/A' 是默认值，以防 provide 未提供
-const injectedOnlineTime = inject('onlineTimeDisplay', '00:00:00');
+// 移除了 inject('isSidebarCollapsed') 和 inject('toggleSidebar')
+// 现在直接使用 appStore.isSidebarCollapsed 和 appStore.toggleSidebar
 
 function updateCurrentTime() {
   const now = new Date();
@@ -106,86 +102,125 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* --- Sidebar --- */
+/* --- Sidebar Base Styles --- */
 .sidebar {
-    width: var(--sidebar-width); /* 依赖全局 CSS 变量 */
-    background-color: var(--sidebar-bg); /* 依赖全局 CSS 变量 */
-    border-right: 1px solid var(--border-color); /* 依赖全局 CSS 变量 */
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    position: fixed;
+    position: fixed; /* 改为 fixed 以便 main-content 可以使用 padding-left 控制布局 */
     left: 0;
     top: 0;
     bottom: 0;
     z-index: 1000;
-    transition: transform var(--transition-speed) ease, width var(--transition-speed) ease; /* 添加 width 过渡 */
-    height: 100vh; /* 确保占满高度 */
+    height: 100vh;
+    transition: width var(--transition-speed) ease;
 }
 
+/* --- Collapsed State Styles --- */
+.sidebar.is-collapsed {
+    width: var(--sidebar-width-collapsed);
+}
+.sidebar.is-collapsed .logo-text,
+.sidebar.is-collapsed .sidebar-nav .nav-link span,
+.sidebar.is-collapsed .sidebar-footer p,
+.sidebar.is-collapsed .sidebar-footer #current-time {
+    opacity: 0;
+    pointer-events: none;
+    position: absolute;
+    left: -9999px; /* 使用这种方式彻底移出视口，比 visibility:hidden 或 display:none 对过渡更友好 */
+    transition: opacity 0.1s ease; /* 快速隐藏的过渡 */
+}
+.sidebar.is-collapsed .sidebar-header {
+    justify-content: center; /* 使 logo-icon 在收起时居中 */
+    padding-left: calc((var(--sidebar-width-collapsed) - 24px) / 2); /* (收起宽度 - 图标宽度) / 2 */
+    padding-right: calc((var(--sidebar-width-collapsed) - 24px) / 2);
+}
+.sidebar.is-collapsed .logo-icon {
+    /* 如果需要，可以调整 margin 使其严格居中，但 justify-content 通常足够 */
+}
+.sidebar.is-collapsed .sidebar-nav .nav-link {
+    padding-left: calc((var(--sidebar-width-collapsed) - 24px) / 2);
+    padding-right: calc((var(--sidebar-width-collapsed) - 24px) / 2);
+}
+.sidebar.is-collapsed .sidebar-nav .nav-link i {
+    margin-right: 0;
+}
+.sidebar.is-collapsed .sidebar-footer {
+    padding-left: calc((var(--sidebar-width-collapsed) - 24px) / 2);
+    padding-right: calc((var(--sidebar-width-collapsed) - 24px) / 2);
+}
+
+
+/* --- Header, Nav, Footer - General Styles (保持之前的样式，但确保过渡与 is-collapsed 协调) --- */
 .sidebar-header {
-    padding: 1.5rem var(--content-padding); /* 依赖全局 CSS 变量 */
+    padding: 1.5rem var(--content-padding);
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    border-bottom: 1px solid var(--border-color); /* 依赖全局 CSS 变量 */
-    flex-shrink: 0; /* 防止头部被压缩 */
-    overflow: hidden; /* 防止内容溢出 */
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: padding var(--transition-speed) ease, justify-content var(--transition-speed) ease;
 }
 .logo-icon {
     font-size: 1.8rem;
-    background: var(--gradient-primary); /* 依赖全局 CSS 变量 */
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    flex-shrink: 0; /* 防止图标压缩 */
+    flex-shrink: 0;
+    /* transition: margin var(--transition-speed) ease; */ /* 移到 is-collapsed 中处理 */
 }
 .logo-text {
     font-size: 1.2rem;
     font-weight: 700;
-    color: var(--text-color); /* 依赖全局 CSS 变量 */
-    white-space: nowrap; /* 防止换行 */
-    transition: opacity 0.1s ease; /* 添加过渡效果 */
+    color: var(--text-color);
+    white-space: nowrap;
+    transition: opacity var(--transition-speed) ease 0.05s; /* 稍微延迟一点，避免与宽度冲突 */
 }
 
 .sidebar-nav {
     flex-grow: 1;
     padding-top: 1rem;
-    overflow-y: auto; /* 如果内容超长则滚动 */
-    overflow-x: hidden; /* 防止水平滚动 */
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 .sidebar-nav ul {
     list-style: none;
-    padding: 0; /* 移除默认 padding */
-    margin: 0; /* 移除默认 margin */
+    padding: 0;
+    margin: 0;
 }
 .sidebar-nav .nav-link {
     display: flex;
     align-items: center;
-    padding: 0.9rem var(--content-padding); /* 依赖全局 CSS 变量 */
+    padding: 0.9rem var(--content-padding);
     margin: 0.3rem 0;
-    color: var(--text-light); /* 依赖全局 CSS 变量 */
+    color: var(--text-light);
     font-weight: 500;
-    border-radius: 0 var(--card-border-radius) var(--card-border-radius) 0; /* 依赖全局 CSS 变量 */
+    border-radius: 0 var(--card-border-radius) var(--card-border-radius) 0;
     position: relative;
     overflow: hidden;
-    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease; /* 依赖全局 CSS 变量 */
     white-space: nowrap;
-    text-decoration: none; /* 清除 a 标签默认下划线 */
+    text-decoration: none;
+    transition: background-color var(--transition-speed) ease,
+                color var(--transition-speed) ease,
+                padding var(--transition-speed) ease;
 }
 .sidebar-nav .nav-link i {
-    width: 24px; /* 固定宽度 */
-    margin-right: 1rem; /* 与文字间距 */
+    width: 24px; /* 固定图标宽度 */
+    margin-right: 1rem;
     font-size: 1.1rem;
-    transition: transform var(--transition-speed) ease, margin var(--transition-speed) ease; /* 添加 margin 过渡 */
     flex-shrink: 0;
     text-align: center;
+    transition: transform var(--transition-speed) ease, margin-right var(--transition-speed) ease;
 }
 .sidebar-nav .nav-link span {
-    transition: opacity var(--transition-speed) ease; /* 依赖全局 CSS 变量 */
+    transition: opacity var(--transition-speed) ease 0.05s; /* 稍微延迟 */
     overflow: hidden;
-    text-overflow: ellipsis;
+    text-overflow: ellipsis; /* 如果文本太长，显示省略号 */
 }
-/* 激活状态左侧竖线 */
 .sidebar-nav .nav-link::before {
     content: '';
     position: absolute;
@@ -193,91 +228,100 @@ onUnmounted(() => {
     top: 0;
     bottom: 0;
     width: 4px;
-    background-color: var(--primary-color); /* 依赖全局 CSS 变量 */
+    background-color: var(--primary-color);
     transform: scaleY(0);
-    transition: transform var(--transition-speed) ease; /* 依赖全局 CSS 变量 */
+    transition: transform var(--transition-speed) ease;
     border-radius: 0 4px 4px 0;
 }
-
 .sidebar-nav .nav-link:hover {
-    background-color: #f0f4f8;
+    background-color: #f0f4f8; /* 考虑使用CSS变量: var(--sidebar-hover-bg, #f0f4f8); */
     color: var(--primary-color);
 }
-/* 激活状态样式 - router-link 会自动添加 linkActiveClass ('active') */
-.sidebar-nav .nav-link.active {
+/* 激活状态的样式 */
+.sidebar-nav .nav-link.router-link-active, /* Vue Router 3 and below */
+.sidebar-nav .nav-link.router-link-exact-active { /* Vue Router 4+ */
     color: var(--primary-color);
-    background-color: #e9eff8;
+    background-color: #e9eff8; /* 考虑使用CSS变量: var(--sidebar-active-bg, #e9eff8); */
     font-weight: 600;
 }
-.sidebar-nav .nav-link.active::before {
+.sidebar-nav .nav-link.router-link-active::before,
+.sidebar-nav .nav-link.router-link-exact-active::before {
     transform: scaleY(1);
 }
-.sidebar-nav .nav-link.active i {
-    transform: scale(1.1);
+.sidebar-nav .nav-link.router-link-active i,
+.sidebar-nav .nav-link.router-link-exact-active i {
+    transform: scale(1.1); /* 轻微放大激活的图标 */
 }
 
 .sidebar-footer {
-    padding: 1.5rem var(--content-padding); /* 依赖全局 CSS 变量 */
-    border-top: 1px solid var(--border-color); /* 依赖全局 CSS 变量 */
+    padding: 1.5rem var(--content-padding);
+    border-top: 1px solid var(--border-color);
     font-size: 0.8rem;
-    color: var(--text-light); /* 依赖全局 CSS 变量 */
+    color: var(--text-light);
     text-align: center;
-    flex-shrink: 0; /* 防止页脚被内容压缩 */
-    transition: padding var(--transition-speed) ease; /* 添加 padding 过渡 */
+    flex-shrink: 0;
     overflow: hidden; /* 防止内容溢出 */
+    transition: padding var(--transition-speed) ease, opacity var(--transition-speed) ease;
 }
 .sidebar-footer #current-time {
     display: block;
     font-weight: 500;
     margin-bottom: 0.5rem;
     font-size: 0.9rem;
-}
-.sidebar-footer #online-time-display {
-    display: block;
-    font-size: 0.85rem;
-    color: var(--text-light);
-    margin-top: 0.3rem;
-    font-weight: 500;
-    white-space: nowrap; /* 防止在线时长换行 */
+    transition: opacity var(--transition-speed) ease 0.05s;
 }
 .sidebar-footer p {
     margin-top: 0.5rem;
     margin-bottom: 0;
-    white-space: nowrap; /* 防止版权信息换行 */
-    transition: opacity 0.1s ease; /* 添加过渡 */
+    white-space: nowrap;
+    transition: opacity var(--transition-speed) ease 0.05s;
 }
 
-/* --- Sidebar Responsive Adjustments (Scoped) --- */
+/* --- Toggle Button (Optional) --- */
+.sidebar-toggle-btn {
+    position: absolute;
+    /* Vertically align it with the header content, adjust top based on your header's actual height */
+    top: calc(1.5rem + (1.8rem * 1.2 / 2)); /* Approx. header padding + half of logo icon height */
+    right: -15px; /* Half of the button outside */
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: var(--sidebar-bg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1001; /* Above sidebar itself */
+    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease, transform var(--transition-speed) ease;
+}
+.sidebar-toggle-btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+/* No special style for .sidebar.is-collapsed .sidebar-toggle-btn needed unless you want to move it */
+
+/* --- Responsive Adjustments (Simplified as 'is-collapsed' handles most hiding) --- */
 @media (max-width: 768px) {
-    /* 在小屏幕下，隐藏文字，调整间距 */
-    .logo-text,
-    .sidebar-nav .nav-link span,
-    .sidebar-footer p {
-        opacity: 0;
-        pointer-events: none; /* 隐藏元素不可交互 */
-        position: absolute; /* 脱离文档流，避免影响布局 */
-        left: -9999px; /* 移出视口 */
-    }
-
-    .sidebar-header,
-    .sidebar-nav .nav-link,
-    .sidebar-footer {
-        /* 动态计算内边距，使图标居中 */
-        padding-left: calc((var(--sidebar-width) - 24px) / 2); /* (总宽度 - 图标宽度) / 2 */
-        padding-right: calc((var(--sidebar-width) - 24px) / 2);
-    }
-
-    .sidebar-nav .nav-link i {
-         margin-right: 0; /* 移除图标右边距 */
-    }
-
-    .sidebar-footer {
-         padding-top: 1rem; /* 调整页脚上边距 */
-         padding-bottom: 1rem;
-    }
-     .sidebar-footer #online-time-display {
-         /* 如果需要，调整在线时长的样式 */
-         font-size: 0.75rem;
-     }
+  /* On small screens, you might want to force the sidebar to be collapsed by default.
+     This would typically be handled by setting the initial state in appStore
+     based on window width, or by having a separate CSS class for small screens
+     that mimics the 'is-collapsed' state if JavaScript control is not desired.
+     For now, we assume 'is-collapsed' state is king.
+  */
+  /* Example: if you wanted small screens to ALWAYS have smaller padding for icons:
+  .sidebar-header,
+  .sidebar-nav .nav-link,
+  .sidebar-footer {
+      padding-left: calc((var(--sidebar-width-collapsed) - 24px) / 2);
+      padding-right: calc((var(--sidebar-width-collapsed) - 24px) / 2);
+  }
+  .sidebar-nav .nav-link i {
+      margin-right: 0;
+  }
+  */
 }
 </style>

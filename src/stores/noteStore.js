@@ -1,31 +1,56 @@
 // src/stores/noteStore.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-// <<< 导入 apiClient >>>
 import apiClient from '@/utils/apiClient.js';
-// import axios from 'axios'; // <<< 移除或注释掉
-
-// <<< 不再需要 API_BASE_URL 常量 >>>
-// const API_BASE_URL = 'http://localhost:8080/api/notes';
 
 export const useNoteStore = defineStore('notes', () => {
   // --- State ---
   const notesList = ref([]);
-  const isLoading = ref(false);
-  const error = ref(null);
+  const isLoading = ref(false); // For loading all notes
+  const error = ref(null); // General error for loading/deleting
+
   const isCreating = ref(false);
   const createError = ref(null);
 
+  // --- >>> ADDED FOR EDITING <<< ---
+  const isUpdating = ref(false); // For updating a note
+  const updateError = ref(null); // Specific error for update process
+  // --- >>> END ADDED FOR EDITING <<< ---
+
   // --- Getters ---
-  const allNotesSorted = computed(() => notesList.value);
+  const allNotesSorted = computed(() => {
+    return [...notesList.value].sort((a, b) => {
+        // Handle cases where timestamp might be null or undefined, or not a comparable type
+        const tsA = typeof a.timestamp === 'string' || typeof a.timestamp === 'number' ? new Date(a.timestamp).getTime() : 0;
+        const tsB = typeof b.timestamp === 'string' || typeof b.timestamp === 'number' ? new Date(b.timestamp).getTime() : 0;
+        return tsB - tsA; // Newest first
+    });
+  });
 
   // --- Actions ---
-  async function loadAllNotes() {
+
+  function setCreateErrorManual(errorMessage) {
+    createError.value = errorMessage;
+  }
+
+  // --- >>> ADDED FOR EDITING <<< ---
+  /**
+   * Sets or clears the manual update error message.
+   * @param {string | null} errorMessage - The error message string, or null to clear.
+   */
+  function setUpdateErrorManual(errorMessage) {
+    updateError.value = errorMessage;
+  }
+  // --- >>> END ADDED FOR EDITING <<< ---
+
+  async function loadAllNotes(forceReload = false) {
+    if (isLoading.value && !forceReload) return;
     isLoading.value = true;
     error.value = null;
-    createError.value = null;
+    // createError.value = null; // Resetting here might clear a pending creation error message
+    // updateError.value = null; // Resetting here might clear a pending update error message
+
     try {
-      // <<< 使用 apiClient 和相对路径 /notes >>>
       const response = await apiClient.get('/notes');
       if (Array.isArray(response.data)) {
           notesList.value = response.data;
@@ -52,42 +77,91 @@ export const useNoteStore = defineStore('notes', () => {
     }
     isCreating.value = true;
     createError.value = null;
-    error.value = null;
 
     try {
        const dataToSend = {
            content: noteData.content,
            noteKey: noteData.noteKey || 'general',
+           // Timestamp is usually set by backend via @PrePersist or similar
        };
-      // <<< 使用 apiClient 和相对路径 /notes >>>
-      // 注意：原代码是发送请求后重新加载列表，这里保持不变。
-      // 另一种方式是接收后端返回的新笔记对象并 unshift 到列表。
-      await apiClient.post('/notes', dataToSend);
-      await loadAllNotes(); // 重新加载列表
-      console.log('New note created via API. List reloaded.');
+      const response = await apiClient.post('/notes', dataToSend);
+
+      // Efficient update: add the new note (returned by API) to the local list
+      if (response.data && response.data.id) {
+        notesList.value.unshift(response.data); // Add to beginning for newest first assumption
+        console.log('New note created and added to local list:', response.data);
+      } else {
+        // Fallback if API doesn't return the created item
+        await loadAllNotes(true);
+        console.log('New note created via API. List reloaded (fallback).');
+      }
       return true;
     } catch (err) {
       console.error('Error creating note via API:', err);
-       const backendError = err.response?.data?.message || err.message || '未知网络错误'; // 获取更具体的错误
+       const backendError = err.response?.data?.message || err.message || '未知网络错误';
        createError.value = `创建笔记失败: ${backendError}`;
-       error.value = createError.value; // 可以同时设置通用错误
       return false;
     } finally {
       isCreating.value = false;
     }
   }
 
+  // --- >>> ADDED FOR EDITING <<< ---
+  async function updateNote(noteId, noteDetails) {
+    if (!noteId || !noteDetails || !noteDetails.content || !noteDetails.content.trim()) {
+        updateError.value = '笔记内容不能为空！';
+        return false;
+    }
+    isUpdating.value = true;
+    updateError.value = null;
+
+    try {
+      // Ensure we don't send 'id' or 'timestamp' in the body if backend auto-manages them on update
+      const dataToSend = {
+        content: noteDetails.content,
+        noteKey: noteDetails.noteKey || 'general',
+        // Other editable fields like 'title' if your NoteEntity has it
+      };
+
+      const response = await apiClient.put(`/notes/${noteId}`, dataToSend);
+      console.log(`Note with id ${noteId} updated via API. Response:`, response.data);
+
+      // Efficient update: find and replace the note in the local list
+      const index = notesList.value.findIndex(note => note.id === noteId);
+      if (index !== -1 && response.data && response.data.id) {
+        // Replace with the item returned from the server, as it might have updated timestamp or other fields
+        notesList.value.splice(index, 1, response.data);
+      } else {
+        // Fallback if local item not found or API response is not as expected
+        console.warn(`Could not find note ${noteId} in local list for update, or API response was unexpected. Reloading all notes.`);
+        await loadAllNotes(true);
+      }
+      return true;
+    } catch (err) {
+      console.error(`Error updating note with id ${noteId}:`, err);
+      const backendError = err.response?.data?.message || err.message || '未知网络错误';
+      updateError.value = `更新笔记失败: ${backendError}`;
+      return false;
+    } finally {
+      isUpdating.value = false;
+    }
+  }
+  // --- >>> END ADDED FOR EDITING <<< ---
+
   async function deleteNote(noteId) {
-      // isLoading.value = true; // 可以考虑使用 isDeleting 状态
       error.value = null;
-      createError.value = null;
       let success = false;
+      // Consider adding isDeleting state: isDeleting.value = true;
+
       try {
-          // <<< 使用 apiClient 和相对路径 /notes/{id} >>>
           await apiClient.delete(`/notes/${noteId}`);
           console.log(`Note with id ${noteId} deleted via API.`);
-          // 同样，删除后重新加载列表
-          await loadAllNotes();
+          const index = notesList.value.findIndex(note => note.id === noteId);
+          if (index !== -1) {
+            notesList.value.splice(index, 1);
+          } else {
+            await loadAllNotes(true); // Fallback
+          }
           success = true;
       } catch (err) {
           console.error(`Error deleting note with id ${noteId}:`, err);
@@ -95,19 +169,32 @@ export const useNoteStore = defineStore('notes', () => {
           error.value = `删除笔记失败: ${backendError}`;
           success = false;
       } finally {
-          // isLoading.value = false; // isDeleting = false;
+          // if using isDeleting: isDeleting.value = false;
       }
       return success;
   }
 
-
-  // --- Initialization ---
   loadAllNotes();
 
-  // --- Expose ---
   return {
-    notesList, isLoading, error, isCreating, createError,
+    // State
+    notesList,
+    isLoading,
+    error,
+    isCreating,
+    createError,
+    isUpdating, // <<< Expose new state
+    updateError, // <<< Expose new state
+
+    // Getters
     allNotesSorted,
-    loadAllNotes, createNote, deleteNote
+
+    // Actions
+    loadAllNotes,
+    createNote,
+    updateNote, // <<< Expose new action
+    deleteNote,
+    setCreateErrorManual,
+    setUpdateErrorManual, // <<< Expose new action
   };
 });
